@@ -1,13 +1,13 @@
 package com.rafario.lahrecetah.domain.usecase
 
 import com.rafario.lahrecetah.data.repository.AuthRepository
-import com.rafario.lahrecetah.domain.model.User
+import com.rafario.lahrecetah.domain.model.AuthUser
 import javax.inject.Inject
 
 class LoginUserUseCase @Inject constructor(
     private val repository: AuthRepository
 ) {
-    suspend operator fun invoke(email: String, password: String): Result<User> {
+    suspend operator fun invoke(email: String, password: String): Result<AuthUser> {
         return repository.login(email, password)
     }
 }

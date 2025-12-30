@@ -1,16 +1,36 @@
 package com.rafario.lahrecetah.domain.usecase
 
 import com.rafario.lahrecetah.data.repository.AuthRepository
+import com.rafario.lahrecetah.data.repository.FirestoreRepository
+import com.rafario.lahrecetah.domain.model.UserProfile
 import javax.inject.Inject
 
 class RegisterUserUseCase @Inject constructor(
-    private val repository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val userRepository: FirestoreRepository
 ) {
+
     suspend operator fun invoke(
         name: String,
         email: String,
         password: String
     ): Result<Unit> {
-        return repository.register(name, email, password)
+        return try {
+            val authUser = authRepository
+                .register(name, email, password)
+                .getOrThrow()
+
+            val profile = UserProfile(
+                uid = authUser.uid,
+                name = name,
+                email = authUser.email
+            )
+
+            userRepository.createUserProfile(profile)
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }

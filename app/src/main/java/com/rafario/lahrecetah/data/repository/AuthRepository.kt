@@ -1,16 +1,19 @@
 package com.rafario.lahrecetah.data.repository
 
 import com.rafario.lahrecetah.data.remote.auth.FirebaseAuthDataSource
-import com.rafario.lahrecetah.domain.model.User
+import com.rafario.lahrecetah.domain.model.AuthUser
 import javax.inject.Inject
 
 class AuthRepository @Inject constructor(
     private val dataSource: FirebaseAuthDataSource
 ) {
-    suspend fun login(email: String, password: String): Result<User> {
+    suspend fun login(email: String, password: String): Result<AuthUser> {
         return dataSource.login(email, password)
             .map { firebaseUser ->
-                User(email = firebaseUser.email ?: "")
+                AuthUser(
+                    uid = firebaseUser.uid,
+                    email = firebaseUser.email.orEmpty()
+                )
             }
     }
 
@@ -18,14 +21,23 @@ class AuthRepository @Inject constructor(
         name: String,
         email: String,
         password: String
-    ): Result<Unit> {
+    ): Result<AuthUser> {
         return dataSource.register(name, email, password)
+            .map { uid ->
+                AuthUser(
+                    uid = uid,
+                    email = email
+                )
+            }
     }
 
     fun logout() = dataSource.logout()
 
-    fun getCurrentUser(): User? =
+    fun getCurrentUser(): AuthUser? =
         dataSource.getCurrentUser()
             ?.takeIf { it.isEmailVerified }
-            ?.let { User(it.email ?: "") }
+            ?.let { AuthUser(
+                uid = it.uid,
+                email = it.email.orEmpty()
+            ) }
 }

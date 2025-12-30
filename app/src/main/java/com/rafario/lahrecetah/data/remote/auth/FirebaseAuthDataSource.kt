@@ -36,7 +36,7 @@ class FirebaseAuthDataSource @Inject constructor(
         name: String,
         email: String,
         password: String
-    ): Result<Unit> =
+    ): Result<String> =
         suspendCancellableCoroutine { cont ->
             firebaseAuth.createUserWithEmailAndPassword(email, password)
                 .addOnSuccessListener { result ->
@@ -44,6 +44,8 @@ class FirebaseAuthDataSource @Inject constructor(
                         cont.resume(Result.failure(Exception("Usuario nulo")))
                         return@addOnSuccessListener
                     }
+
+                    val uid = user.uid
 
                     val profileUpdates = UserProfileChangeRequest.Builder()
                         .setDisplayName(name)
@@ -55,7 +57,7 @@ class FirebaseAuthDataSource @Inject constructor(
                         }
                         .addOnSuccessListener {
                             firebaseAuth.signOut()
-                            cont.resume(Result.success(Unit))
+                            cont.resume(Result.success(uid)) // 👈 clave
                         }
                         .addOnFailureListener {
                             cont.resume(Result.failure(it))
