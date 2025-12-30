@@ -39,25 +39,22 @@ fun RegisterScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
 
-    LaunchedEffect(registerEvent) {
-        registerEvent.collect {
-            when (it) {
-                RegisterEvent.Success -> {
-                    snackbarHostState.showSnackbar(
-                        "Revisa tu correo para confirmar la cuenta"
-                    )
+    LaunchedEffect(Unit) {
+        registerEvent.collect { event ->
+            when (event) {
+                is RegisterEvent.Success -> {
+                    snackbarHostState.showSnackbar("Revisa tu correo para confirmar la cuenta")
                     viewModel.clearFields()
                     onDismiss()
                 }
 
                 is RegisterEvent.Error -> {
-                    snackbarHostState.showSnackbar(
-                        it.message ?: "Error desconocido"
-                    )
+                    snackbarHostState.showSnackbar(event.message ?: "Error desconocido")
                 }
             }
         }
     }
+
     Box {
         Column(
             verticalArrangement = Arrangement.Center,
@@ -84,7 +81,8 @@ fun RegisterScreen(
                 value = password,
                 onValueChange = { viewModel.onPasswordChanged(it) },
                 label = "Contraseña",
-                modifier = Modifier.padding(top = 10.dp)
+                modifier = Modifier.padding(top = 10.dp),
+                isPassword = true
             )
 
             Button(

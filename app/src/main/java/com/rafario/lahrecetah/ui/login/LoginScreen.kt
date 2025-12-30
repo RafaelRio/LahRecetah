@@ -150,7 +150,7 @@ fun LoginScreen(
             CustomOutlineTextField(
                 value = password, onValueChange = {
                     viewModel.onPasswordChanged(it)
-                }, label = "Contraseña", visualTransformation = PasswordVisualTransformation()
+                }, label = "Contraseña", isPassword = true
             )
 
 
