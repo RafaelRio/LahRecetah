@@ -11,4 +11,8 @@ class FirestoreRepository @Inject constructor(
     suspend fun createUserProfile(profile: UserProfile) {
         dataSource.createUserProfile(profile)
     }
+
+    suspend fun userExists(uid: String): Boolean {
+        return dataSource.userExists(uid)
+    }
 }

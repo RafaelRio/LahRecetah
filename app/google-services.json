@@ -12,7 +12,12 @@
           "package_name": "com.rafario.lahrecetah"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "821849863764-5b90fka638db5vupdl0ob46mk0isjctl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyA1S9suwLoPWCVb0eyb0z8QrvQLOsRwPac"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "821849863764-5b90fka638db5vupdl0ob46mk0isjctl.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

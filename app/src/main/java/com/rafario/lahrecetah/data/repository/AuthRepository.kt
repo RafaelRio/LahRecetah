@@ -1,5 +1,6 @@
 package com.rafario.lahrecetah.data.repository
 
+import com.google.firebase.auth.AuthCredential
 import com.rafario.lahrecetah.data.remote.auth.FirebaseAuthDataSource
 import com.rafario.lahrecetah.domain.model.AuthUser
 import javax.inject.Inject
@@ -12,7 +13,19 @@ class AuthRepository @Inject constructor(
             .map { firebaseUser ->
                 AuthUser(
                     uid = firebaseUser.uid,
-                    email = firebaseUser.email.orEmpty()
+                    email = firebaseUser.email.orEmpty(),
+                    displayName = firebaseUser.displayName
+                )
+            }
+    }
+
+    suspend fun loginWithGoogle(credential: AuthCredential): Result<AuthUser> {
+        return dataSource.loginWithGoogle(credential)
+            .map { firebaseUser ->
+                AuthUser(
+                    uid = firebaseUser.uid,
+                    email = firebaseUser.email.orEmpty(),
+                    displayName = firebaseUser.displayName
                 )
             }
     }

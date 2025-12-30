@@ -70,6 +70,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth.ktx)
     implementation(libs.firebase.firestore.ktx)
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
     /*implementation(libs.firebase.analytics)
 
 

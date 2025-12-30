@@ -11,7 +11,7 @@ class UserFirestoreDataSource @Inject constructor(
 
     suspend fun createUserProfile(profile: UserProfile) {
         firestore.collection("users")
-            .document(profile.uid)
+            .document(profile.email)
             .set(
                 mapOf(
                     "name" to profile.name,
@@ -19,5 +19,17 @@ class UserFirestoreDataSource @Inject constructor(
                 )
             )
             .await()
+    }
+
+    suspend fun userExists(uid: String): Boolean {
+        return try {
+            val document = firestore.collection("users")
+                .document(uid)
+                .get()
+                .await()
+            document.exists()
+        } catch (e: Exception) {
+            false
+        }
     }
 }

@@ -1,5 +1,6 @@
 package com.rafario.lahrecetah.data.remote.auth
 
+import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
@@ -25,6 +26,22 @@ class FirebaseAuthDataSource @Inject constructor(
                     } else {
                         firebaseAuth.signOut()
                         cont.resume(Result.failure(Exception("Email no verificado")))
+                    }
+                }
+                .addOnFailureListener {
+                    cont.resume(Result.failure(it))
+                }
+        }
+
+    suspend fun loginWithGoogle(credential: AuthCredential): Result<FirebaseUser> =
+        suspendCancellableCoroutine { cont ->
+            firebaseAuth.signInWithCredential(credential)
+                .addOnSuccessListener { result ->
+                    val user = result.user
+                    if (user != null) {
+                        cont.resume(Result.success(user))
+                    } else {
+                        cont.resume(Result.failure(Exception("Usuario nulo")))
                     }
                 }
                 .addOnFailureListener {

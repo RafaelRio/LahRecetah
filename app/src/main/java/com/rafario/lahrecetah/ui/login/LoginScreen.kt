@@ -1,27 +1,33 @@
 package com.rafario.lahrecetah.ui.login
 
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -33,8 +39,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -42,6 +48,10 @@ import androidx.compose.ui.window.SecureFlagPolicy
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.google.firebase.auth.GoogleAuthProvider
 import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineTextField
 import com.rafario.lahrecetah.ui.register.RegisterScreen
@@ -62,92 +72,146 @@ fun LoginScreen(
     val context = LocalContext.current
     var goToRegister by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(context.getString(R.string.default_web_client_id)).requestEmail()
+            .build()
+    }
+    val googleSignInClient = remember {
+        GoogleSignIn.getClient(context, gso)
+    }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            val credential = GoogleAuthProvider.getCredential(account.idToken, null)
+            viewModel.loginWithGoogle(credential)
+        } catch (e: ApiException) {
+            Toast.makeText(
+                context, "Error al iniciar sesión con Google: ${e.message}", Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    fun startGoogleSignIn() {
+        // Cerrar sesión de Google para forzar selección de cuenta
+        googleSignInClient.signOut().addOnCompleteListener {
+            launcher.launch(googleSignInClient.signInIntent)
+        }
+    }
 
     LaunchedEffect(loginEvent) {
-        loginEvent.collect { success ->
-            if (success) {
-                Toast.makeText(context, "Inicio de sesión exitoso", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(context, "Inicio de sesión fallido", Toast.LENGTH_SHORT).show()
+        loginEvent.collect { event ->
+            when (event) {
+                is LoginEvent.Success -> {
+                    Toast.makeText(context, "¡Bienvenido, ${event.user.name}!", Toast.LENGTH_SHORT)
+                        .show()
+                }
+
+                is LoginEvent.Error -> {
+                    Toast.makeText(
+                        context, "Inicio de sesión fallido: ${event.message}", Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Image(painter = painterResource(R.drawable.playstore), contentDescription = "Logo")
-        Text("Iniciar sesión", style = MaterialTheme.typography.displayMedium)
+    Scaffold { innerPadding ->
 
-        Spacer(Modifier.height(16.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 21.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(
+                    bottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+                ),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Image(painter = painterResource(R.drawable.playstore), contentDescription = "Logo")
+            Text("Iniciar sesión", style = MaterialTheme.typography.displayMedium)
 
-        CustomOutlineTextField(
-            value = email,
-            onValueChange = {
-                viewModel.onEmailChanged(it)
-            },
-            label = "Correo"
-        )
+            Spacer(Modifier.height(16.dp))
 
-        Spacer(Modifier.height(8.dp))
-
-        CustomOutlineTextField(
-            value = password,
-            onValueChange = {
-                viewModel.onPasswordChanged(it)
-            },
-            label = "Contraseña",
-            visualTransformation = PasswordVisualTransformation()
-        )
-
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
-                checked = rememberMe,
-                onCheckedChange = { viewModel.onRememberMeChanged(it) }
+            CustomOutlineTextField(
+                value = email, onValueChange = {
+                    viewModel.onEmailChanged(it)
+                }, label = "Correo"
             )
-            Text("Recordarme")
-            Spacer(Modifier.weight(1f))
-        }
 
-        Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
 
-        Button(onClick = {
-            viewModel.login()
-        }, modifier = Modifier.fillMaxWidth()) {
-            Text("Iniciar sesión")
-        }
+            CustomOutlineTextField(
+                value = password, onValueChange = {
+                    viewModel.onPasswordChanged(it)
+                }, label = "Contraseña", visualTransformation = PasswordVisualTransformation()
+            )
 
 
-        TextButton(onClick = {
-            goToRegister = true
-        }, content = {
-            Text("Registrarse")
-        })
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = rememberMe, onCheckedChange = { viewModel.onRememberMeChanged(it) })
+                Text("Recordarme")
+                Spacer(Modifier.weight(1f))
+            }
 
-        if (goToRegister) {
-            ModalBottomSheet(
-                onDismissRequest = {
-                    goToRegister = false
-                }, 
-                sheetState = sheetState, 
-                containerColor = ModalBackground,
-                properties = ModalBottomSheetProperties(
-                    securePolicy = SecureFlagPolicy.SecureOn,
-                    shouldDismissOnBackPress = false
+            Spacer(Modifier.height(8.dp))
+
+            Button(onClick = {
+                viewModel.login()
+            }, modifier = Modifier.fillMaxWidth()) {
+                Text("Iniciar sesión")
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Botón de Google Sign-In
+            OutlinedButton(
+                onClick = {
+                    startGoogleSignIn()
+                }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = Color.White
                 )
             ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
+                Image(
+                    painter = painterResource(R.drawable.ic_google),
+                    contentDescription = "Google Logo",
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.padding(horizontal = 8.dp))
+                Text("Continuar con Google", color = Color.Black)
+            }
+
+            TextButton(onClick = {
+                goToRegister = true
+            }, content = {
+                Text("Registrarse")
+            })
+
+            if (goToRegister) {
+                ModalBottomSheet(
+                    onDismissRequest = {
+                        goToRegister = false
+                    },
+                    sheetState = sheetState,
+                    containerColor = ModalBackground,
+                    properties = ModalBottomSheetProperties(
+                        securePolicy = SecureFlagPolicy.SecureOn, shouldDismissOnBackPress = false
+                    )
                 ) {
-                    RegisterScreen(
-                        navHostController = navHostController,
-                        onDismiss = { goToRegister = false })
+                    Box(
+                        Modifier.fillMaxWidth()
+                    ) {
+                        RegisterScreen(
+                            navHostController = navHostController,
+                            onDismiss = { goToRegister = false })
+                    }
                 }
             }
         }
