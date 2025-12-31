@@ -51,6 +51,7 @@ class AuthRepository @Inject constructor(
             ?.takeIf { it.isEmailVerified }
             ?.let { AuthUser(
                 uid = it.uid,
-                email = it.email.orEmpty()
+                email = it.email.orEmpty(),
+                displayName = it.displayName.orEmpty()
             ) }
 }

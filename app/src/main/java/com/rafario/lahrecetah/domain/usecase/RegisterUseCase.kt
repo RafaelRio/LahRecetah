@@ -1,13 +1,13 @@
 package com.rafario.lahrecetah.domain.usecase
 
 import com.rafario.lahrecetah.data.repository.AuthRepository
-import com.rafario.lahrecetah.data.repository.FirestoreRepository
+import com.rafario.lahrecetah.data.repository.UserFirestoreRepository
 import com.rafario.lahrecetah.domain.model.UserProfile
 import javax.inject.Inject
 
 class RegisterUserUseCase @Inject constructor(
     private val authRepository: AuthRepository,
-    private val userRepository: FirestoreRepository
+    private val userRepository: UserFirestoreRepository
 ) {
 
     suspend operator fun invoke(

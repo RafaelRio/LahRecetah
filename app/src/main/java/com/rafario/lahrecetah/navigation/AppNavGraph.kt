@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.rafario.lahrecetah.ui.login.LoginScreen
+import com.rafario.lahrecetah.ui.main.MainScreen
 import com.rafario.lahrecetah.ui.register.RegisterScreen
 import com.rafario.lahrecetah.ui.splash.SplashScreen
 
@@ -15,5 +16,6 @@ fun AppNavGraph(navHostController: NavHostController = rememberNavController()) 
         composable("splash") { SplashScreen(navHostController = navHostController) }
         composable("login") { LoginScreen(navHostController = navHostController) }
         composable("register") { RegisterScreen(navHostController = navHostController) }
+        composable("main_screen") { MainScreen(navHostController = navHostController) }
     }
 }

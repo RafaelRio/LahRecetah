@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,12 +23,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -42,7 +46,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.SecureFlagPolicy
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -68,10 +71,14 @@ fun LoginScreen(
     val password by viewModel.password.collectAsStateWithLifecycle()
     val rememberMe by viewModel.rememberMe.collectAsStateWithLifecycle()
     val errorMessage by viewModel.error.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val loginEvent = viewModel.loginEvent
     val context = LocalContext.current
     var goToRegister by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val snackbarHostState = remember { SnackbarHostState() }
+
+
     val gso = remember {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(context.getString(R.string.default_web_client_id)).requestEmail()
@@ -97,7 +104,6 @@ fun LoginScreen(
     }
 
     fun startGoogleSignIn() {
-        // Cerrar sesión de Google para forzar selección de cuenta
         googleSignInClient.signOut().addOnCompleteListener {
             launcher.launch(googleSignInClient.signInIntent)
         }
@@ -107,20 +113,19 @@ fun LoginScreen(
         loginEvent.collect { event ->
             when (event) {
                 is LoginEvent.Success -> {
-                    Toast.makeText(context, "¡Bienvenido, ${event.user.name}!", Toast.LENGTH_SHORT)
-                        .show()
+                    navHostController.navigate("main_screen")
                 }
 
                 is LoginEvent.Error -> {
-                    Toast.makeText(
-                        context, "Inicio de sesión fallido: ${event.message}", Toast.LENGTH_SHORT
-                    ).show()
+                    snackbarHostState.showSnackbar("${event.message}")
                 }
             }
         }
     }
 
-    Scaffold { innerPadding ->
+    Scaffold(snackbarHost = {
+        SnackbarHost(hostState = snackbarHostState)
+    }) { innerPadding ->
 
         Column(
             modifier = Modifier
@@ -169,9 +174,8 @@ fun LoginScreen(
                 Text("Iniciar sesión")
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
 
-            // Botón de Google Sign-In
             OutlinedButton(
                 onClick = {
                     startGoogleSignIn()
@@ -213,6 +217,17 @@ fun LoginScreen(
                             onDismiss = { goToRegister = false })
                     }
                 }
+            }
+        }
+
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
             }
         }
     }

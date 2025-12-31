@@ -2,14 +2,14 @@ package com.rafario.lahrecetah.domain.usecase
 
 import com.google.firebase.auth.AuthCredential
 import com.rafario.lahrecetah.data.repository.AuthRepository
-import com.rafario.lahrecetah.data.repository.FirestoreRepository
+import com.rafario.lahrecetah.data.repository.UserFirestoreRepository
 import com.rafario.lahrecetah.domain.model.AuthUser
 import com.rafario.lahrecetah.domain.model.UserProfile
 import javax.inject.Inject
 
 class GoogleLoginUseCase @Inject constructor(
     private val authRepository: AuthRepository,
-    private val firestoreRepository: FirestoreRepository
+    private val firestoreRepository: UserFirestoreRepository
 ) {
     suspend operator fun invoke(credential: AuthCredential): Result<AuthUser> {
         return try {

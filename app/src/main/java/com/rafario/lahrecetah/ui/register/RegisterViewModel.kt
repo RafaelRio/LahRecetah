@@ -27,6 +27,9 @@ class RegisterViewModel @Inject constructor(
     private val _registerEvent = MutableSharedFlow<RegisterEvent>()
     val registerEvent = _registerEvent.asSharedFlow()
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading = _isLoading.asStateFlow()
+
     fun onNameChanged(value: String) {
         _name.value = value
     }
@@ -41,6 +44,7 @@ class RegisterViewModel @Inject constructor(
 
     fun register() {
         viewModelScope.launch {
+            _isLoading.value = true
             val result = registerUserUseCase(_name.value, _email.value, _password.value)
 
             if (result.isSuccess) {
@@ -48,6 +52,7 @@ class RegisterViewModel @Inject constructor(
             } else {
                 _registerEvent.emit(RegisterEvent.Error(result.exceptionOrNull()?.message))
             }
+            _isLoading.value = false
         }
     }
 

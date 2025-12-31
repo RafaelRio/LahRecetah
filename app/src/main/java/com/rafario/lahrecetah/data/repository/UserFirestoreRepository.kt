@@ -4,7 +4,7 @@ import com.rafario.lahrecetah.data.remote.firestore.UserFirestoreDataSource
 import com.rafario.lahrecetah.domain.model.UserProfile
 import javax.inject.Inject
 
-class FirestoreRepository @Inject constructor(
+class UserFirestoreRepository @Inject constructor(
     private val dataSource: UserFirestoreDataSource
 ) {
 

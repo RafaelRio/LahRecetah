@@ -30,6 +30,8 @@ class LoginViewModel @Inject constructor(
     val error = _error.asStateFlow()
     private val _loginEvent = MutableSharedFlow<LoginEvent>()
     val loginEvent = _loginEvent.asSharedFlow()
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading = _isLoading.asStateFlow()
 
     fun login() {
         viewModelScope.launch {
@@ -37,6 +39,9 @@ class LoginViewModel @Inject constructor(
                 _loginEvent.emit(LoginEvent.Error("Email y contraseña obligatorios"))
                 return@launch
             }
+
+            _isLoading.value = true
+
             val result = loginUserUseCase(_email.value.trim(), _password.value)
             if (result.isSuccess) {
                 val authUser = result.getOrNull()
@@ -58,11 +63,14 @@ class LoginViewModel @Inject constructor(
                 _error.value = result.exceptionOrNull()?.message
                 _loginEvent.emit(LoginEvent.Error(result.exceptionOrNull()?.message))
             }
+
+            _isLoading.value = false // ✅ Termina loader
         }
     }
 
     fun loginWithGoogle(credential: AuthCredential) {
         viewModelScope.launch {
+            _isLoading.value = true
             val result = loginWithGoogleUseCase(credential)
             if (result.isSuccess) {
                 val authUser = result.getOrNull()
@@ -84,6 +92,8 @@ class LoginViewModel @Inject constructor(
                 _error.value = result.exceptionOrNull()?.message
                 _loginEvent.emit(LoginEvent.Error(result.exceptionOrNull()?.message))
             }
+
+            _isLoading.value = false
         }
     }
 
