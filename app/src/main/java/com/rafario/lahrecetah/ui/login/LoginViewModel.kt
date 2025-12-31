@@ -4,8 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.AuthCredential
 import com.rafario.lahrecetah.domain.model.UserProfile
-import com.rafario.lahrecetah.domain.usecase.GoogleLoginUseCase
-import com.rafario.lahrecetah.domain.usecase.LoginUserUseCase
+import com.rafario.lahrecetah.domain.usecase.users.GoogleLoginUseCase
+import com.rafario.lahrecetah.domain.usecase.users.LoginUserUseCase
+import com.rafario.lahrecetah.domain.usecase.users.SaveRememberMeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +18,8 @@ import javax.inject.Inject
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val loginUserUseCase: LoginUserUseCase,
-    private val loginWithGoogleUseCase: GoogleLoginUseCase
+    private val loginWithGoogleUseCase: GoogleLoginUseCase,
+    private val saveRememberMeUseCase: SaveRememberMeUseCase
 ) : ViewModel() {
 
     private val _email = MutableStateFlow("")
@@ -44,6 +46,7 @@ class LoginViewModel @Inject constructor(
 
             val result = loginUserUseCase(_email.value.trim(), _password.value)
             if (result.isSuccess) {
+                saveRememberMeUseCase(_rememberMe.value)
                 val authUser = result.getOrNull()
                 if (authUser != null) {
                     val userName = authUser.displayName ?: _email.value.split("@").first()
@@ -73,6 +76,7 @@ class LoginViewModel @Inject constructor(
             _isLoading.value = true
             val result = loginWithGoogleUseCase(credential)
             if (result.isSuccess) {
+                saveRememberMeUseCase(_rememberMe.value)
                 val authUser = result.getOrNull()
                 if (authUser != null) {
                     val userName = authUser.displayName ?: "Usuario"

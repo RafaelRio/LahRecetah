@@ -12,16 +12,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.rafario.lahrecetah.R
 import kotlinx.coroutines.delay
 
 @Composable
-fun SplashScreen(navHostController: NavHostController, modifier: Modifier = Modifier) {
+fun SplashScreen(
+    navHostController: NavHostController,
+    modifier: Modifier = Modifier,
+    viewModel: SplashViewModel = hiltViewModel()
+) {
+
     LaunchedEffect(Unit) {
         delay(2000)
-        navHostController.navigate("login") {
-            popUpTo("splash") { inclusive = true }
+        viewModel.startDestination.collect { destination ->
+            navHostController.navigate(destination) {
+                popUpTo("splash") { inclusive = true }
+            }
         }
     }
 

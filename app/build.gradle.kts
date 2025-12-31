@@ -70,14 +70,16 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth.ktx)
     implementation(libs.firebase.firestore.ktx)
-    implementation("com.google.android.gms:play-services-auth:21.0.0")
+    //Google login
+    implementation(libs.play.services.auth)
     /*implementation(libs.firebase.analytics)
-
-
     implementation(libs.firebase.storage.ktx)*/
 
     //di
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
-    implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
+    implementation(libs.androidx.hilt.navigation.compose)
+
+    //DataStore
+    implementation(libs.androidx.datastore.preferences)
 }

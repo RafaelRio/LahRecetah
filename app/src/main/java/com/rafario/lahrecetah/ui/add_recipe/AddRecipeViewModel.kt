@@ -2,7 +2,7 @@ package com.rafario.lahrecetah.ui.add_recipe
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.rafario.lahrecetah.domain.usecase.CreateRecipeUseCase
+import com.rafario.lahrecetah.domain.usecase.recipes.CreateRecipeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow

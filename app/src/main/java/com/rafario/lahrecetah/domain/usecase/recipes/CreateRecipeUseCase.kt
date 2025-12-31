@@ -1,4 +1,4 @@
-package com.rafario.lahrecetah.domain.usecase
+package com.rafario.lahrecetah.domain.usecase.recipes
 
 import com.rafario.lahrecetah.data.repository.AuthRepository
 import com.rafario.lahrecetah.data.repository.RecipeRepository

@@ -3,7 +3,7 @@ package com.rafario.lahrecetah.ui.recipe_list
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rafario.lahrecetah.domain.model.Recipe
-import com.rafario.lahrecetah.domain.usecase.GetRecipesUseCase
+import com.rafario.lahrecetah.domain.usecase.recipes.GetRecipesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

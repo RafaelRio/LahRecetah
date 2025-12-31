@@ -2,7 +2,7 @@ package com.rafario.lahrecetah.ui.register
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.rafario.lahrecetah.domain.usecase.RegisterUserUseCase
+import com.rafario.lahrecetah.domain.usecase.users.RegisterUserUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow

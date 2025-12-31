@@ -1,4 +1,4 @@
-package com.rafario.lahrecetah.domain.usecase
+package com.rafario.lahrecetah.domain.usecase.users
 
 import com.google.firebase.auth.AuthCredential
 import com.rafario.lahrecetah.data.repository.AuthRepository
