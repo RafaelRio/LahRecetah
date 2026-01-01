@@ -42,6 +42,9 @@ class RecipeFirestoreDataSource @Inject constructor(
                     "description" to recipe.description,
                     "ingredients" to recipe.ingredients,
                     "steps" to recipe.steps,
+                    "durationMinutes" to recipe.durationMinutes,
+                    "category" to recipe.category.name,
+                    "difficulty" to recipe.difficulty,
                     "createdByUid" to recipe.createdByUid,
                     "createdByName" to recipe.createdByName,
                     "createdAt" to FieldValue.serverTimestamp()

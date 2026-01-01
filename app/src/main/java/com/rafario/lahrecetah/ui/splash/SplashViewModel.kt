@@ -11,19 +11,16 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SplashViewModel @Inject constructor(
-    getRememberMeUseCase: GetRememberMeUseCase,
-    authRepository: AuthRepository
+    getRememberMeUseCase: GetRememberMeUseCase, authRepository: AuthRepository
 ) : ViewModel() {
 
-    val startDestination: Flow<String> =
-        combine(
-            getRememberMeUseCase(),
-            flowOf(authRepository.getCurrentUser())
-        ) { rememberMe, user ->
-            if (rememberMe && user != null) {
-                "main_screen"
-            } else {
-                "login"
-            }
+    val startDestination: Flow<String> = combine(
+        getRememberMeUseCase(), flowOf(authRepository.getCurrentUser())
+    ) { rememberMe, user ->
+        if (rememberMe && user != null) {
+            "main_screen"
+        } else {
+            "login"
         }
+    }
 }

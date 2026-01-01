@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.rafario.lahrecetah.navigation.Routes
 
 @Composable
 fun ProfileScreen(
@@ -28,8 +29,8 @@ fun ProfileScreen(
 ) {
     LaunchedEffect(Unit) {
         viewModel.logoutEvent.collect {
-            navHostController.navigate("login") {
-                popUpTo("main_screen") { inclusive = true }
+            navHostController.navigate(Routes.LOGIN) {
+                popUpTo(Routes.MAIN) { inclusive = true }
             }
         }
     }

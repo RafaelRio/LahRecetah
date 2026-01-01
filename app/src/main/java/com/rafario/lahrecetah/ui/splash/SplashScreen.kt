@@ -15,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.rafario.lahrecetah.R
+import com.rafario.lahrecetah.navigation.Routes
 import kotlinx.coroutines.delay
 
 @Composable
@@ -28,7 +29,7 @@ fun SplashScreen(
         delay(2000)
         viewModel.startDestination.collect { destination ->
             navHostController.navigate(destination) {
-                popUpTo("splash") { inclusive = true }
+                popUpTo(Routes.SPLASH) { inclusive = true }
             }
         }
     }

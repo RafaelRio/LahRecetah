@@ -11,11 +11,35 @@ import com.rafario.lahrecetah.ui.register.RegisterScreen
 import com.rafario.lahrecetah.ui.splash.SplashScreen
 
 @Composable
-fun AppNavGraph(navHostController: NavHostController = rememberNavController()) {
-    NavHost(navController = navHostController, startDestination = "splash") {
-        composable("splash") { SplashScreen(navHostController = navHostController) }
-        composable("login") { LoginScreen(navHostController = navHostController) }
-        composable("register") { RegisterScreen(navHostController = navHostController) }
-        composable("main_screen") { MainScreen(navHostController = navHostController) }
+fun AppNavGraph(
+    navHostController: NavHostController = rememberNavController()
+) {
+    NavHost(
+        navController = navHostController,
+        startDestination = Routes.SPLASH
+    ) {
+
+        composable(Routes.SPLASH) {
+            SplashScreen(navHostController)
+        }
+
+        composable(Routes.LOGIN) {
+            LoginScreen(navHostController = navHostController)
+        }
+
+        composable(Routes.REGISTER) {
+            RegisterScreen(navHostController = navHostController)
+        }
+
+        composable(Routes.MAIN) {
+            MainScreen(navHostController = navHostController)
+        }
     }
+}
+
+object Routes {
+    const val SPLASH = "splash"
+    const val LOGIN = "login"
+    const val REGISTER = "register"
+    const val MAIN = "main_screen"
 }

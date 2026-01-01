@@ -1,6 +1,5 @@
 package com.rafario.lahrecetah.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -9,30 +8,55 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    background = AppBackground,
-    primary = principalColor,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    // Si aún no tienes paleta dark, usamos un dark coherente:
+    // (cuando quieras te preparo una pastel dark de verdad)
+    primary = Primary,
+    onPrimary = OnPrimary,
+
+    secondary = Secondary,
+    onSecondary = OnSecondary,
+
+    tertiary = Tertiary,
+    onTertiary = OnTertiary,
+
+    background = Color(0xFF121212),
+    onBackground = Color(0xFFEFEFEF),
+
+    surface = Color(0xFF1A1A1A),
+    onSurface = Color(0xFFEFEFEF),
+
+    surfaceVariant = Color(0xFF242424),
+    onSurfaceVariant = Color(0xFFE0E0E0),
+
+    error = Error,
+    onError = OnError
 )
 
 private val LightColorScheme = lightColorScheme(
-    background = AppBackground,
-    primary = principalColor,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = Primary,
+    onPrimary = OnPrimary,
 
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    secondary = Secondary,
+    onSecondary = OnSecondary,
+
+    tertiary = Tertiary,
+    onTertiary = OnTertiary,
+
+    background = AppBackground,
+    onBackground = OnSecondary, // texto sobre fondo claro
+
+    surface = Surface,
+    onSurface = OnSecondary,
+
+    surfaceVariant = SurfaceVariant,
+    onSurfaceVariant = OnSecondary,
+
+    error = Error,
+    onError = OnError
 )
 
 @Composable

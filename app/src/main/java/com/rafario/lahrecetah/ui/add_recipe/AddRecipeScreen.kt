@@ -1,114 +1,297 @@
 package com.rafario.lahrecetah.ui.add_recipe
 
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import com.rafario.lahrecetah.domain.model.RecipeCategory
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineTextField
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddRecipeScreen(
     modifier: Modifier = Modifier,
     navHostController: NavHostController,
     viewModel: AddRecipeViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val title by viewModel.title.collectAsStateWithLifecycle()
     val description by viewModel.description.collectAsStateWithLifecycle()
     val ingredients by viewModel.ingredients.collectAsStateWithLifecycle()
     val steps by viewModel.steps.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    val category by viewModel.category.collectAsStateWithLifecycle()
+    val duration by viewModel.durationText.collectAsStateWithLifecycle()
+    val difficulty by viewModel.difficulty.collectAsStateWithLifecycle()
+
+    var ingredientInput by remember { mutableStateOf("") }
+    var stepInput by remember { mutableStateOf("") }
+
+    val cs = MaterialTheme.colorScheme
+    val scrollState = rememberScrollState()
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { event ->
             when (event) {
                 is AddRecipeEvent.Success -> Toast.makeText(
-                    context,
-                    "Creado con exito",
-                    Toast.LENGTH_SHORT
+                    context, "Receta creada correctamente", Toast.LENGTH_SHORT
                 ).show()
 
-                is AddRecipeEvent.Error ->
-                    Toast.makeText(
-                        context,
-                        event.message ?: "Error",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                is AddRecipeEvent.Error -> Toast.makeText(
+                    context, event.message ?: "Error inesperado", Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
 
-    Column(
-        modifier = Modifier
+    Scaffold(
+        modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState())
-    ) {
+            .imePadding(),
+        containerColor = cs.background,
+        contentWindowInsets = WindowInsets(0),
+        // ✅ Botón fijo “como con Box”, pero ahora el teclado lo empuja JUSTO lo necesario.
+        bottomBar = {
+            Button(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                onClick = { viewModel.createRecipe() },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = cs.primary, contentColor = cs.onPrimary
+                ),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Text("Guardar receta", style = MaterialTheme.typography.titleMedium)
+            }
+        }) { innerPadding ->
 
-        CustomOutlineTextField(
-            value = title,
-            onValueChange = {
-                viewModel.onTitleChanged(it)
-            },
-            label = "Título"
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        CustomOutlineTextField(
-            value = description,
-            onValueChange = {
-                viewModel.onDescriptionChanged(it)
-            },
-            label = "Descripción"
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        Text("Ingredientes")
-        ingredients.forEach { Text("• $it") }
-
-        Spacer(Modifier.height(8.dp))
-
-        Button(onClick = { /* diálogo añadir ingrediente */ }) {
-            Text("Añadir ingrediente")
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Text("Pasos")
-        steps.forEachIndexed { index, step ->
-            Text("${index + 1}. $step")
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        Button(onClick = { /* diálogo añadir paso */ }) {
-            Text("Añadir paso")
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { viewModel.createRecipe() }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp)
+                .verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Guardar receta")
+            Spacer(Modifier.padding(top = 16.dp))
+
+            SectionCard(title = "Información") {
+                CustomOutlineTextField(
+                    value = title, onValueChange = viewModel::onTitleChanged, label = "Título"
+                )
+                CustomOutlineTextField(
+                    value = description,
+                    onValueChange = viewModel::onDescriptionChanged,
+                    label = "Descripción"
+                )
+            }
+
+            SectionCard(title = "Detalles") {
+                val categories = listOf(
+                    "Entrante" to RecipeCategory.STARTER,
+                    "Primer plato" to RecipeCategory.FIRST_COURSE,
+                    "Segundo plato" to RecipeCategory.MAIN_COURSE,
+                    "Postre" to RecipeCategory.DESSERT,
+                    "Dulce" to RecipeCategory.SWEET,
+                    "Ensalada" to RecipeCategory.SALAD,
+                    "Sopa" to RecipeCategory.SOUP,
+                    "Bebida" to RecipeCategory.DRINK
+                )
+
+                CategoryDropdown(
+                    categories = categories,
+                    selected = RecipeCategory.toDisplayName(category),
+                    onSelected = { viewModel.onCategoryChanged(it) })
+
+                CustomOutlineTextField(
+                    value = duration,
+                    onValueChange = viewModel::onDurationChanged,
+                    label = "Duración (minutos)",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+
+                Text("Dificultad: $difficulty", color = cs.onSurface)
+
+                Slider(
+                    value = difficulty.toFloat(),
+                    onValueChange = { viewModel.onDifficultyChanged(it.toInt()) },
+                    valueRange = 1f..5f,
+                    steps = 3,
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = cs.secondary,
+                        inactiveTrackColor = cs.secondary.copy(alpha = 0.25f),
+                        thumbColor = cs.secondary
+                    )
+                )
+            }
+
+            SectionCard(title = "Ingredientes") {
+                ingredients.forEach {
+                    Text("• $it", color = cs.onSurface)
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CustomOutlineTextField(
+                        modifier = Modifier.weight(1f),
+                        value = ingredientInput,
+                        onValueChange = { ingredientInput = it },
+                        label = "Nuevo ingrediente"
+                    )
+
+                    Button(
+                        onClick = {
+                            if (ingredientInput.isNotBlank()) {
+                                viewModel.addIngredient(ingredientInput)
+                                ingredientInput = ""
+                            }
+                        }, colors = ButtonDefaults.buttonColors(
+                            containerColor = cs.secondary.copy(alpha = 0.18f),
+                            contentColor = cs.onSurface
+                        ), shape = RoundedCornerShape(14.dp)
+                    ) { Text("+") }
+                }
+            }
+
+            SectionCard(title = "Pasos") {
+                steps.forEachIndexed { index, step ->
+                    Text("${index + 1}. $step", color = cs.onSurface)
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CustomOutlineTextField(
+                        modifier = Modifier.weight(1f),
+                        value = stepInput,
+                        onValueChange = { stepInput = it },
+                        label = "Nuevo paso"
+                    )
+
+                    Button(
+                        onClick = {
+                            if (stepInput.isNotBlank()) {
+                                viewModel.addStep(stepInput)
+                                stepInput = ""
+                            }
+                        }, colors = ButtonDefaults.buttonColors(
+                            containerColor = cs.secondary.copy(alpha = 0.18f),
+                            contentColor = cs.onSurface
+                        ), shape = RoundedCornerShape(14.dp)
+                    ) { Text("+") }
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun SectionCard(
+    title: String, content: @Composable ColumnScope.() -> Unit
+) {
+    val cs = MaterialTheme.colorScheme
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = cs.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = title, style = MaterialTheme.typography.titleMedium, color = cs.onSurface
+            )
+            content()
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CategoryDropdown(
+    categories: List<Pair<String, RecipeCategory>>,
+    selected: String,
+    onSelected: (RecipeCategory) -> Unit
+) {
+    val cs = MaterialTheme.colorScheme
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+        OutlinedTextField(
+            value = selected,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Categoría") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth(),
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                focusedBorderColor = cs.secondary,
+                unfocusedBorderColor = cs.onSurface.copy(alpha = 0.18f),
+                focusedLabelColor = cs.secondary,
+                unfocusedLabelColor = cs.onSurface.copy(alpha = 0.7f),
+                cursorColor = cs.secondary
+            )
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(cs.surface)
+        ) {
+            categories.forEach { (name, category) ->
+                DropdownMenuItem(text = { Text(name, color = cs.onSurface) }, onClick = {
+                    onSelected(category)
+                    expanded = false
+                })
+            }
         }
     }
 }

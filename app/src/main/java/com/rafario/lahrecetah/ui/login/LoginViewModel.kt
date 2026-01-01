@@ -76,7 +76,7 @@ class LoginViewModel @Inject constructor(
             _isLoading.value = true
             val result = loginWithGoogleUseCase(credential)
             if (result.isSuccess) {
-                saveRememberMeUseCase(_rememberMe.value)
+                saveRememberMeUseCase(true)
                 val authUser = result.getOrNull()
                 if (authUser != null) {
                     val userName = authUser.displayName ?: "Usuario"

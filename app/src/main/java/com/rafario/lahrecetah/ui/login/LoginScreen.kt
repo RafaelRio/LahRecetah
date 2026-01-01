@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -46,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.SecureFlagPolicy
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -56,6 +58,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.GoogleAuthProvider
 import com.rafario.lahrecetah.R
+import com.rafario.lahrecetah.navigation.Routes
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineTextField
 import com.rafario.lahrecetah.ui.register.RegisterScreen
 import com.rafario.lahrecetah.ui.theme.ModalBackground
@@ -109,15 +112,17 @@ fun LoginScreen(
         }
     }
 
-    LaunchedEffect(loginEvent) {
+    LaunchedEffect(Unit) {
         loginEvent.collect { event ->
             when (event) {
                 is LoginEvent.Success -> {
-                    navHostController.navigate("main_screen")
+                    navHostController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
                 }
 
                 is LoginEvent.Error -> {
-                    snackbarHostState.showSnackbar("${event.message}")
+                    snackbarHostState.showSnackbar(event.message ?: "Error")
                 }
             }
         }
@@ -147,15 +152,20 @@ fun LoginScreen(
             CustomOutlineTextField(
                 value = email, onValueChange = {
                     viewModel.onEmailChanged(it)
-                }, label = "Correo"
+                }, label = "Correo",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
 
             Spacer(Modifier.height(8.dp))
 
             CustomOutlineTextField(
-                value = password, onValueChange = {
+                value = password,
+                onValueChange = {
                     viewModel.onPasswordChanged(it)
-                }, label = "Contraseña", isPassword = true
+                },
+                label = "Contraseña",
+                isPassword = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
             )
 
 

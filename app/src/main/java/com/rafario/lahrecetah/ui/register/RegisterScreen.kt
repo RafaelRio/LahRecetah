@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -77,7 +79,8 @@ fun RegisterScreen(
                 value = email,
                 onValueChange = { viewModel.onEmailChanged(it) },
                 label = "Email",
-                modifier = Modifier.padding(top = 10.dp)
+                modifier = Modifier.padding(top = 10.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
 
             CustomOutlineTextField(
@@ -85,7 +88,8 @@ fun RegisterScreen(
                 onValueChange = { viewModel.onPasswordChanged(it) },
                 label = "Contraseña",
                 modifier = Modifier.padding(top = 10.dp),
-                isPassword = true
+                isPassword = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
             )
 
             Button(
