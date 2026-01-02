@@ -1,17 +1,21 @@
 package com.rafario.lahrecetah.ui.add_recipe
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -26,12 +30,10 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,7 +49,6 @@ import androidx.navigation.NavHostController
 import com.rafario.lahrecetah.domain.model.RecipeCategory
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineTextField
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddRecipeScreen(
     modifier: Modifier = Modifier,
@@ -67,56 +68,28 @@ fun AddRecipeScreen(
     var stepInput by remember { mutableStateOf("") }
 
     val cs = MaterialTheme.colorScheme
-    val scrollState = rememberScrollState()
 
-    LaunchedEffect(Unit) {
-        viewModel.uiEvent.collect { event ->
-            when (event) {
-                is AddRecipeEvent.Success -> Toast.makeText(
-                    context, "Receta creada correctamente", Toast.LENGTH_SHORT
-                ).show()
+    val imeNoNavBars = WindowInsets.ime.exclude(WindowInsets.navigationBars)
 
-                is AddRecipeEvent.Error -> Toast.makeText(
-                    context, event.message ?: "Error inesperado", Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-    }
 
-    Scaffold(
-        modifier = modifier
+    Box(
+        modifier = Modifier
             .fillMaxSize()
-            .imePadding(),
-        containerColor = cs.background,
-        contentWindowInsets = WindowInsets(0),
-        // ✅ Botón fijo “como con Box”, pero ahora el teclado lo empuja JUSTO lo necesario.
-        bottomBar = {
-            Button(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                onClick = { viewModel.createRecipe() },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = cs.primary, contentColor = cs.onPrimary
-                ),
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Text("Guardar receta", style = MaterialTheme.typography.titleMedium)
-            }
-        }) { innerPadding ->
-
+            .padding(horizontal = 20.dp)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(16.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 80.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Spacer(Modifier.padding(top = 16.dp))
-
             SectionCard(title = "Información") {
                 CustomOutlineTextField(
-                    value = title, onValueChange = viewModel::onTitleChanged, label = "Título"
+                    value = title,
+                    onValueChange = viewModel::onTitleChanged,
+                    label = "Título"
                 )
                 CustomOutlineTextField(
                     value = description,
@@ -140,7 +113,8 @@ fun AddRecipeScreen(
                 CategoryDropdown(
                     categories = categories,
                     selected = RecipeCategory.toDisplayName(category),
-                    onSelected = { viewModel.onCategoryChanged(it) })
+                    onSelected = { viewModel.onCategoryChanged(it) }
+                )
 
                 CustomOutlineTextField(
                     value = duration,
@@ -165,9 +139,7 @@ fun AddRecipeScreen(
             }
 
             SectionCard(title = "Ingredientes") {
-                ingredients.forEach {
-                    Text("• $it", color = cs.onSurface)
-                }
+                ingredients.forEach { Text("• $it", color = cs.onSurface) }
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -186,10 +158,12 @@ fun AddRecipeScreen(
                                 viewModel.addIngredient(ingredientInput)
                                 ingredientInput = ""
                             }
-                        }, colors = ButtonDefaults.buttonColors(
+                        },
+                        colors = ButtonDefaults.buttonColors(
                             containerColor = cs.secondary.copy(alpha = 0.18f),
                             contentColor = cs.onSurface
-                        ), shape = RoundedCornerShape(14.dp)
+                        ),
+                        shape = RoundedCornerShape(14.dp)
                     ) { Text("+") }
                 }
             }
@@ -216,13 +190,31 @@ fun AddRecipeScreen(
                                 viewModel.addStep(stepInput)
                                 stepInput = ""
                             }
-                        }, colors = ButtonDefaults.buttonColors(
+                        },
+                        colors = ButtonDefaults.buttonColors(
                             containerColor = cs.secondary.copy(alpha = 0.18f),
                             contentColor = cs.onSurface
-                        ), shape = RoundedCornerShape(14.dp)
+                        ),
+                        shape = RoundedCornerShape(14.dp)
                     ) { Text("+") }
                 }
             }
+        }
+
+        Button(
+            onClick = { viewModel.createRecipe() },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = cs.primary,
+                contentColor = cs.onPrimary
+            ),
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .windowInsetsPadding(imeNoNavBars)
+        ) {
+            Text("Guardar receta", style = MaterialTheme.typography.titleMedium)
         }
     }
 }
