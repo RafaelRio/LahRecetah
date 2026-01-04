@@ -21,17 +21,6 @@ fun DocumentSnapshot.toRecipe(): Recipe {
                     .getOrDefault(RecipeCategory.OTHER)
             }
             ?: RecipeCategory.OTHER,
+        imageUrl = getString("imageUrl") ?: ""
     )
-}
-
-fun RecipeCategory.toUiText(): String = when (this) {
-    RecipeCategory.STARTER -> "Entrante"
-    RecipeCategory.FIRST_COURSE -> "Primer plato"
-    RecipeCategory.MAIN_COURSE -> "Segundo plato"
-    RecipeCategory.DESSERT -> "Postre"
-    RecipeCategory.SWEET -> "Dulce"
-    RecipeCategory.SALAD -> "Ensalada"
-    RecipeCategory.SOUP -> "Sopa"
-    RecipeCategory.DRINK -> "Bebida"
-    RecipeCategory.OTHER -> "Otros"
 }

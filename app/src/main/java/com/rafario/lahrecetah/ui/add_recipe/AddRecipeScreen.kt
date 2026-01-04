@@ -1,6 +1,10 @@
 package com.rafario.lahrecetah.ui.add_recipe
 
+import android.content.Context
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,22 +13,22 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,21 +40,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.rafario.lahrecetah.domain.model.Recipe
+import coil.compose.AsyncImage
 import com.rafario.lahrecetah.domain.model.RecipeCategory
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineDropdownField
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineTextField
 import com.rafario.lahrecetah.utils.positionAwareImePadding
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +74,22 @@ fun AddRecipeScreen(
     val steps by viewModel.steps.collectAsStateWithLifecycle()
     val difficulty by viewModel.difficulty.collectAsStateWithLifecycle()
     val category by viewModel.category.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val localImageUri by viewModel.localImageUri.collectAsStateWithLifecycle()
+
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) viewModel.onImageSelected(uri)
+    }
+
+    var cameraUri by remember { mutableStateOf<Uri?>(null) }
+
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) cameraUri?.let { viewModel.onImageSelected(it) }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect {
@@ -76,6 +97,7 @@ fun AddRecipeScreen(
                 is AddRecipeEvent.Success -> {
                     Toast.makeText(context, "Receta añadida", Toast.LENGTH_SHORT).show()
                 }
+
                 is AddRecipeEvent.Error -> {
                     Toast.makeText(context, it.message, Toast.LENGTH_SHORT).show()
                 }
@@ -83,14 +105,43 @@ fun AddRecipeScreen(
         }
     }
 
-    Box(Modifier
-        .positionAwareImePadding()
-        .padding(20.dp)) {
+    Box(
+        Modifier
+            .positionAwareImePadding()
+            .padding(20.dp)
+    ) {
         Column(
             modifier = Modifier
 
                 .verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
+            SectionHeader("Imagen")
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                TextButton(onClick = { pickImageLauncher.launch("image/*") }) {
+                    Text("Galería")
+                }
+                TextButton(onClick = {
+                    val uri = createImageUri(context)
+                    cameraUri = uri
+                    takePictureLauncher.launch(uri)
+                }) {
+                    Text("Cámara")
+                }
+            }
+
+            if (!localImageUri.isNullOrBlank()) {
+                AsyncImage(
+                    model = localImageUri,
+                    contentDescription = "Imagen receta",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(20)),
+                    contentScale = ContentScale.Crop
+                )
+            }
 
             CustomOutlineTextField(
                 value = title,
@@ -126,8 +177,7 @@ fun AddRecipeScreen(
                     onValueChange = { viewModel.onCategoryChanged(it) },
                     label = "Categoría",
                     options = RecipeCategory.entries.toList(),
-                    optionLabel = { RecipeCategory.toDisplayName(it) }
-                )
+                    optionLabel = { RecipeCategory.toDisplayName(it) })
             }
 
             HorizontalDivider()
@@ -206,8 +256,7 @@ fun AddRecipeScreen(
             }
 
             TextButton(
-                onClick = { viewModel.addStepRow() },
-                modifier = Modifier.align(Alignment.Start)
+                onClick = { viewModel.addStepRow() }, modifier = Modifier.align(Alignment.Start)
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(Modifier.padding(4.dp))
@@ -218,15 +267,22 @@ fun AddRecipeScreen(
         }
 
         Button(
-            onClick = {
-                viewModel.createRecipe()
-            },
+            onClick = { viewModel.createRecipe() },
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter),
-            enabled = title.isNotBlank() && description.isNotBlank()
+            enabled = !isLoading && title.isNotBlank() && description.isNotBlank()
         ) {
-            Text("Guardar Receta")
+            if (isLoading) {
+                CircularProgressIndicator(
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Text("Guardando…")
+            } else {
+                Text("Guardar Receta")
+            }
         }
     }
 
@@ -271,4 +327,13 @@ fun DynamicRowItem(
             )
         }
     }
+}
+
+fun createImageUri(context: Context): Uri {
+    val file = File(context.cacheDir, "camera_${System.currentTimeMillis()}.jpg")
+    return FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.provider",
+        file
+    )
 }

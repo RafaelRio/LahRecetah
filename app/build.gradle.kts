@@ -70,10 +70,12 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth.ktx)
     implementation(libs.firebase.firestore.ktx)
+    implementation(libs.firebase.storage.ktx)
     //Google login
     implementation(libs.play.services.auth)
+
     /*implementation(libs.firebase.analytics)
-    implementation(libs.firebase.storage.ktx)*/
+    */
 
     //di
     implementation(libs.hilt.android)
@@ -82,4 +84,8 @@ dependencies {
 
     //DataStore
     implementation(libs.androidx.datastore.preferences)
+
+    //Coil
+    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

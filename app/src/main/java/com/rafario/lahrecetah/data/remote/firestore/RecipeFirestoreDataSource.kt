@@ -47,7 +47,8 @@ class RecipeFirestoreDataSource @Inject constructor(
                     "difficulty" to recipe.difficulty,
                     "createdByUid" to recipe.createdByUid,
                     "createdByName" to recipe.createdByName,
-                    "createdAt" to FieldValue.serverTimestamp()
+                    "createdAt" to FieldValue.serverTimestamp(),
+                    "imageUrl" to recipe.imageUrl
                 )
             )
             .await()

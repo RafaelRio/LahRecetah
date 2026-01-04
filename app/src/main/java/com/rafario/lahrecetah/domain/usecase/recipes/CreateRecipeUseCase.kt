@@ -18,7 +18,8 @@ class CreateRecipeUseCase @Inject constructor(
         steps: List<String>,
         category: RecipeCategory,
         durationMinutes: Int,
-        difficulty: Int
+        difficulty: Int,
+        imageUrl: String
     ): Result<Unit> {
 
         if (title.isBlank()) return Result.failure(
@@ -45,7 +46,8 @@ class CreateRecipeUseCase @Inject constructor(
             durationMinutes = durationMinutes,
             difficulty = difficulty,
             createdByUid = user.uid,
-            createdByName = user.displayName.orEmpty()
+            createdByName = user.displayName.orEmpty(),
+            imageUrl = imageUrl
         )
 
         return recipeRepository.createRecipe(recipe)

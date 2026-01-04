@@ -11,6 +11,7 @@ data class Recipe(
     val durationMinutes: Int = 0,
     val category: RecipeCategory = RecipeCategory.OTHER,
     val difficulty: Int = 1,
+    val imageUrl: String = ""
 )
 
 enum class RecipeCategory {
