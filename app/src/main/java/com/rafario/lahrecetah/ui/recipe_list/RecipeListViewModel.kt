@@ -15,7 +15,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class RecipeListViewModel @Inject constructor(
-    private val getRecipesUseCase: GetRecipesUseCase
+    getRecipesUseCase: GetRecipesUseCase
 ) : ViewModel() {
 
     val uiState: StateFlow<RecipeListUiState> =

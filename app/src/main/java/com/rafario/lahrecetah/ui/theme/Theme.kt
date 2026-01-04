@@ -12,26 +12,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    // Si aún no tienes paleta dark, usamos un dark coherente:
-    // (cuando quieras te preparo una pastel dark de verdad)
-    primary = Primary,
-    onPrimary = OnPrimary,
 
-    secondary = Secondary,
-    onSecondary = OnSecondary,
+    // === COLORES DE MARCA ===
+    primary = Primary.copy(alpha = 0.9f),
+    onPrimary = Color(0xFF1E1E1E),
 
-    tertiary = Tertiary,
-    onTertiary = OnTertiary,
+    secondary = Secondary.copy(alpha = 0.9f),
+    onSecondary = Color(0xFF1E1E1E),
 
+    tertiary = Tertiary.copy(alpha = 0.9f),
+    onTertiary = Color(0xFF1E1E1E),
+
+    // === FONDOS ===
     background = Color(0xFF121212),
-    onBackground = Color(0xFFEFEFEF),
+    onBackground = Color(0xFFEAEAEA),
 
-    surface = Color(0xFF1A1A1A),
-    onSurface = Color(0xFFEFEFEF),
+    surface = Color(0xFF1C1C1C),
+    onSurface = Color(0xFFEAEAEA),
 
-    surfaceVariant = Color(0xFF242424),
-    onSurfaceVariant = Color(0xFFE0E0E0),
+    surfaceVariant = Color(0xFF2A2A2A),
+    onSurfaceVariant = Color(0xFFD6D6D6),
 
+    // === ESTADOS ===
     error = Error,
     onError = OnError
 )

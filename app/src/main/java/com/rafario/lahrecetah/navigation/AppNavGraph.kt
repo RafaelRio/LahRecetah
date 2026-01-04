@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.rafario.lahrecetah.ui.login.LoginScreen
 import com.rafario.lahrecetah.ui.main.MainScreen
+import com.rafario.lahrecetah.ui.recipe_detail.RecipeDetailScreen
 import com.rafario.lahrecetah.ui.register.RegisterScreen
 import com.rafario.lahrecetah.ui.splash.SplashScreen
 
@@ -34,6 +35,11 @@ fun AppNavGraph(
         composable(Routes.MAIN) {
             MainScreen(navHostController = navHostController)
         }
+
+        composable("${Routes.RECIPE_DETAIL}/{recipeId}") { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("recipeId") ?: return@composable
+            RecipeDetailScreen(recipeId = id, navHostController = navHostController)
+        }
     }
 }
 
@@ -42,4 +48,5 @@ object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val MAIN = "main_screen"
+    const val RECIPE_DETAIL = "recipe_detail"
 }

@@ -53,4 +53,20 @@ class RecipeFirestoreDataSource @Inject constructor(
             )
             .await()
     }
+
+    fun observeRecipeById(recipeId: String): Flow<Recipe?> = callbackFlow {
+        val docRef = firestore.collection("recipes").document(recipeId)
+
+        val listener = docRef.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+
+            val recipe = snapshot?.takeIf { it.exists() }?.toRecipe()
+            trySend(recipe)
+        }
+
+        awaitClose { listener.remove() }
+    }
 }

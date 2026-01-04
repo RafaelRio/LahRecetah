@@ -21,4 +21,8 @@ class RecipeRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    fun observeRecipeById(recipeId: String): Flow<Recipe?> {
+        return dataSource.observeRecipeById(recipeId)
+    }
 }
