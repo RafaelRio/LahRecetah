@@ -51,20 +51,36 @@ class AddRecipeViewModel @Inject constructor(
     fun onCategoryChanged(value: RecipeCategory) { _category.value = value }
     fun onDifficultyChanged(value: Int) { _difficulty.value = value.coerceIn(1,5) }
 
-    fun addIngredient(value: String) {
-        if (value.isNotBlank()) _ingredients.value += value
+    fun addIngredientRow() {
+        _ingredients.value += ""
     }
 
-    fun removeIngredient(value: String) {
-        _ingredients.value -= value
+    fun updateIngredient(index: Int, value: String) {
+        _ingredients.value = _ingredients.value.toMutableList().also { list ->
+            if (index in list.indices) list[index] = value
+        }
     }
 
-    fun addStep(value: String) {
-        if (value.isNotBlank()) _steps.value += value
+    fun removeIngredient(index: Int) {
+        _ingredients.value = _ingredients.value.toMutableList().also { list ->
+            if (index in list.indices) list.removeAt(index)
+        }
+    }
+
+    fun addStepRow() {
+        _steps.value += ""
+    }
+
+    fun updateStep(index: Int, value: String) {
+        _steps.value = _steps.value.toMutableList().also { list ->
+            if (index in list.indices) list[index] = value
+        }
     }
 
     fun removeStep(index: Int) {
-        _steps.value = _steps.value.toMutableList().also { if (index in it.indices) it.removeAt(index) }
+        _steps.value = _steps.value.toMutableList().also { list ->
+            if (index in list.indices) list.removeAt(index)
+        }
     }
 
     fun createRecipe() {
@@ -75,16 +91,21 @@ class AddRecipeViewModel @Inject constructor(
                 return@launch
             }
 
-            if (_ingredients.value.isEmpty()) {
+            if (_ingredients.value.isEmpty() || _ingredients.value.all { it.isBlank() }) {
                 _uiEvent.emit(AddRecipeEvent.Error("Añade al menos un ingrediente"))
+                return@launch
+            }
+
+            if (_steps.value.isEmpty() || _steps.value.all { it.isBlank() }) {
+                _uiEvent.emit(AddRecipeEvent.Error("Añade al menos un paso"))
                 return@launch
             }
 
             val result = createRecipeUseCase(
                 title = _title.value,
                 description = _description.value,
-                ingredients = _ingredients.value,
-                steps = _steps.value,
+                ingredients = _ingredients.value.filter { it.isNotBlank() },
+                steps = _steps.value.filter { it.isNotBlank() },
                 category = _category.value,
                 durationMinutes = _durationText.value.toIntOrNull() ?: 0,
                 difficulty = _difficulty.value

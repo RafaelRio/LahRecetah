@@ -1,9 +1,7 @@
 package com.rafario.lahrecetah.ui.custom_views
 
-import android.text.InputType
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicSecureTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
@@ -21,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -32,15 +31,21 @@ fun CustomOutlineTextField(
     onValueChange: (String) -> Unit,
     label: String,
     isPassword: Boolean = false,
-    keyboardOptions: KeyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+    keyboardOptions: KeyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+    multiline: Boolean = false,
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
+    val finalKeyboardOptions =
+        if (multiline) keyboardOptions.copy(imeAction = ImeAction.Default) else keyboardOptions
+
     OutlinedTextField(
         value = value,
-        onValueChange = { onValueChange(it) },
+        onValueChange = onValueChange,
         placeholder = { Text(label) },
-        singleLine = true,
+        singleLine = !multiline,
+        minLines = if (multiline) 3 else 1,
+        maxLines = if (multiline) 5 else 1,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20),
         colors = OutlinedTextFieldDefaults.colors(
@@ -61,6 +66,6 @@ fun CustomOutlineTextField(
                 }
             }
         },
-        keyboardOptions = keyboardOptions
+        keyboardOptions = finalKeyboardOptions,
     )
 }
