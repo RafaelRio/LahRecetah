@@ -85,5 +85,10 @@ dependencies {
 
     //Coil
     implementation("io.coil-kt:coil-compose:2.6.0")
-    implementation("io.coil-kt:coil-compose:2.6.0")
+
+    //Image crop
+    implementation("com.github.yalantis:ucrop:2.2.11-native")
+
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("com.google.android.material:material:1.12.0")
 }

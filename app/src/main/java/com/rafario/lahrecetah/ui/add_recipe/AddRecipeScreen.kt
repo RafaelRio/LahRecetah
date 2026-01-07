@@ -1,10 +1,12 @@
 package com.rafario.lahrecetah.ui.add_recipe
 
+import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -66,6 +68,7 @@ import com.rafario.lahrecetah.ui.custom_views.CustomOutlineDropdownField
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineTextField
 import com.rafario.lahrecetah.utils.dashedBorder
 import com.rafario.lahrecetah.utils.positionAwareImePadding
+import com.yalantis.ucrop.UCrop
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,11 +93,37 @@ fun AddRecipeScreen(
     var showImagePickerSheet by remember { mutableStateOf(false) }
     val focusedIngredientIndex by viewModel.focusedIngredientIndex.collectAsStateWithLifecycle()
     val focusedStepIndex by viewModel.focusedStepIndex.collectAsStateWithLifecycle()
+    val cropLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result: ActivityResult ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val resultUri = UCrop.getOutput(result.data!!)
+            if (resultUri != null) {
+                viewModel.onImageSelected(resultUri)
+            }
+        } else if (result.resultCode == UCrop.RESULT_ERROR) {
+            val error = UCrop.getError(result.data!!)
+            Toast.makeText(context, error?.message ?: "Error recortando imagen", Toast.LENGTH_SHORT)
+                .show()
+        }
+    }
+
+    fun startCrop(sourceUri: Uri) {
+        val destUri = Uri.fromFile(
+            File(context.cacheDir, "cropped_${System.currentTimeMillis()}.jpg")
+        )
+
+        val intent = UCrop.of(sourceUri, destUri)
+            .withAspectRatio(16f, 9f)
+            .getIntent(context)
+
+        cropLauncher.launch(intent)
+    }
 
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
-        if (uri != null) viewModel.onImageSelected(uri)
+        if (uri != null) startCrop(uri)
     }
 
     var cameraUri by remember { mutableStateOf<Uri?>(null) }
@@ -102,7 +131,7 @@ fun AddRecipeScreen(
     val takePictureLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success) cameraUri?.let { viewModel.onImageSelected(it) }
+        if (success) cameraUri?.let { startCrop(it) }
     }
 
     val cameraPermissionLauncher =
@@ -122,6 +151,8 @@ fun AddRecipeScreen(
             }
         }
 
+
+
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect {
             when (it) {
@@ -135,6 +166,8 @@ fun AddRecipeScreen(
             }
         }
     }
+
+
 
     Box(
         Modifier

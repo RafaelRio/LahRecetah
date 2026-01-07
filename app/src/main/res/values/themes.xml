@@ -2,4 +2,7 @@
 <resources>
 
     <style name="Theme.LahRecetah" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.LahRecetah.UCrop" parent="Theme.AppCompat.Light.NoActionBar">
+    </style>
 </resources>
