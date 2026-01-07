@@ -1,10 +1,13 @@
 package com.rafario.lahrecetah.ui.add_recipe
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +24,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,6 +35,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,11 +48,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,6 +64,7 @@ import coil.compose.AsyncImage
 import com.rafario.lahrecetah.domain.model.RecipeCategory
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineDropdownField
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineTextField
+import com.rafario.lahrecetah.utils.dashedBorder
 import com.rafario.lahrecetah.utils.positionAwareImePadding
 import java.io.File
 
@@ -76,6 +87,9 @@ fun AddRecipeScreen(
     val category by viewModel.category.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val localImageUri by viewModel.localImageUri.collectAsStateWithLifecycle()
+    var showImagePickerSheet by remember { mutableStateOf(false) }
+    val focusedIngredientIndex by viewModel.focusedIngredientIndex.collectAsStateWithLifecycle()
+    val focusedStepIndex by viewModel.focusedStepIndex.collectAsStateWithLifecycle()
 
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -90,6 +104,23 @@ fun AddRecipeScreen(
     ) { success ->
         if (success) cameraUri?.let { viewModel.onImageSelected(it) }
     }
+
+    val cameraPermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            if (isGranted) {
+                val uri = createImageUri(context)
+                cameraUri = uri
+                takePictureLauncher.launch(uri)
+            } else {
+                Toast.makeText(
+                    context,
+                    "Permiso de cámara denegado",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect {
@@ -116,31 +147,62 @@ fun AddRecipeScreen(
                 .verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            SectionHeader("Imagen")
+            /*SectionHeader("Imagen", modifier = Modifier.clickable {
+                viewModel.createMockRecipe()
+            })*/
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(onClick = { pickImageLauncher.launch("image/*") }) {
-                    Text("Galería")
-                }
-                TextButton(onClick = {
-                    val uri = createImageUri(context)
-                    cameraUri = uri
-                    takePictureLauncher.launch(uri)
-                }) {
-                    Text("Cámara")
-                }
-            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .dashedBorder(color = MaterialTheme.colorScheme.primary)
+                    .clickable(enabled = localImageUri.isNullOrBlank()) {
+                        showImagePickerSheet = true
+                    }
+            ) {
 
-            if (!localImageUri.isNullOrBlank()) {
-                AsyncImage(
-                    model = localImageUri,
-                    contentDescription = "Imagen receta",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
-                        .clip(RoundedCornerShape(20)),
-                    contentScale = ContentScale.Crop
-                )
+                if (localImageUri.isNullOrBlank()) {
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(36.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text("Añadir imagen")
+                    }
+                } else {
+
+                    AsyncImage(
+                        model = localImageUri,
+                        contentDescription = "Imagen receta",
+                        modifier = Modifier.matchParentSize(),
+                        contentScale = ContentScale.Crop
+                    )
+
+                    // ❌ Botón eliminar
+                    IconButton(
+                        onClick = { viewModel.removeImage() },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(30.dp)
+                            .size(20.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
+
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Eliminar imagen",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
             }
 
             CustomOutlineTextField(
@@ -220,7 +282,9 @@ fun AddRecipeScreen(
                     text = ingredient,
                     onTextChange = { viewModel.updateIngredient(index, it) },
                     onRemove = { viewModel.removeIngredient(index) },
-                    placeholder = "Ej. 200g de Harina"
+                    placeholder = "Ej. 200g de Harina",
+                    requestFocus = index == focusedIngredientIndex,
+                    onFocusRequested = { viewModel.clearIngredientFocus() }
                 )
             }
 
@@ -251,7 +315,9 @@ fun AddRecipeScreen(
                     onTextChange = { viewModel.updateStep(index, it) },
                     onRemove = { viewModel.removeStep(index) },
                     placeholder = "Ej. Mezclar los huevos...",
-                    isTextArea = true
+                    isTextArea = true,
+                    requestFocus = index == focusedStepIndex,
+                    onFocusRequested = { viewModel.clearStepFocus() }
                 )
             }
 
@@ -286,16 +352,76 @@ fun AddRecipeScreen(
         }
     }
 
+    if (showImagePickerSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showImagePickerSheet = false }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp, horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+
+                // 📷 Cámara
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .clickable {
+                            showImagePickerSheet = false
+
+                            if (hasCameraPermission(context)) {
+                                val uri = createImageUri(context)
+                                cameraUri = uri
+                                takePictureLauncher.launch(uri)
+                            } else {
+                                cameraPermissionLauncher.launch(
+                                    android.Manifest.permission.CAMERA
+                                )
+                            }
+                        }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = "Cámara",
+                        modifier = Modifier.size(36.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text("Cámara")
+                }
+
+                // 🖼️ Galería
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .clickable {
+                            showImagePickerSheet = false
+                            pickImageLauncher.launch("image/*")
+                        }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Image,
+                        contentDescription = "Galería",
+                        modifier = Modifier.size(36.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text("Galería")
+                }
+            }
+        }
+    }
 
 }
 
 @Composable
-fun SectionHeader(title: String) {
+fun SectionHeader(title: String, modifier: Modifier = Modifier) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(vertical = 4.dp)
+        modifier = modifier.padding(vertical = 4.dp)
     )
 }
 
@@ -305,8 +431,19 @@ fun DynamicRowItem(
     onTextChange: (String) -> Unit,
     onRemove: () -> Unit,
     placeholder: String,
-    isTextArea: Boolean = false
+    isTextArea: Boolean = false,
+    requestFocus: Boolean = false,
+    onFocusRequested: () -> Unit = {}
 ) {
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(requestFocus) {
+        if (requestFocus) {
+            focusRequester.requestFocus()
+            onFocusRequested()
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -317,7 +454,9 @@ fun DynamicRowItem(
             value = text,
             onValueChange = onTextChange,
             label = placeholder,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .focusRequester(focusRequester)
         )
         IconButton(onClick = onRemove) {
             Icon(
@@ -336,4 +475,11 @@ fun createImageUri(context: Context): Uri {
         "${context.packageName}.provider",
         file
     )
+}
+
+fun hasCameraPermission(context: Context): Boolean {
+    return ContextCompat.checkSelfPermission(
+        context,
+        android.Manifest.permission.CAMERA
+    ) == PackageManager.PERMISSION_GRANTED
 }

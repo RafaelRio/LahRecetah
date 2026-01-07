@@ -185,14 +185,9 @@ fun RecipeDetailScreen(
                                             verticalArrangement = Arrangement.spacedBy(4.dp)
                                         ) {
                                             Text(
-                                                text = "Paso ${index + 1}",
+                                                text = "Paso ${index + 1}. $step",
                                                 style = MaterialTheme.typography.labelLarge,
                                                 color = MaterialTheme.colorScheme.primary
-                                            )
-                                            Text(
-                                                text = step,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                     }
