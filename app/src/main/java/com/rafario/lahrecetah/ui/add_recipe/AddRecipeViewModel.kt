@@ -222,6 +222,7 @@ class AddRecipeViewModel @Inject constructor(
         _category.value = RecipeCategory.OTHER
         _durationText.value = ""
         _difficulty.value = 3
+        _localImageUri.value = null
     }
 
     private suspend fun uploadRecipeImage(uri: Uri): String {
