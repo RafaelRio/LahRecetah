@@ -14,6 +14,7 @@ class UserFirestoreDataSource @Inject constructor(
             .document(profile.email)
             .set(
                 mapOf(
+                    "uid" to profile.uid,
                     "name" to profile.name,
                     "email" to profile.email
                 )
@@ -21,10 +22,10 @@ class UserFirestoreDataSource @Inject constructor(
             .await()
     }
 
-    suspend fun userExists(uid: String): Boolean {
+    suspend fun userExists(email: String): Boolean {
         return try {
             val document = firestore.collection("users")
-                .document(uid)
+                .document(email)
                 .get()
                 .await()
             document.exists()
@@ -32,4 +33,28 @@ class UserFirestoreDataSource @Inject constructor(
             false
         }
     }
+
+    suspend fun getUserProfile(email: String): UserProfile? {
+        val doc = firestore.collection("users").document(email).get().await()
+        if (!doc.exists()) return null
+
+        val uid = doc.getString("uid").orEmpty()
+        val name = doc.getString("name").orEmpty()
+        val mail = doc.getString("email") ?: email
+
+        return UserProfile(
+            uid = uid,
+            name = name,
+            email = mail
+        )
+    }
+
+    suspend fun updateUserName(email: String, newName: String) {
+        firestore.collection("users")
+            .document(email)
+            .update("name", newName)
+            .await()
+    }
+
+
 }

@@ -25,4 +25,15 @@ class RecipeRepository @Inject constructor(
     fun observeRecipeById(recipeId: String): Flow<Recipe?> {
         return dataSource.observeRecipeById(recipeId)
     }
+
+    fun observeRecipesByUser(uid: String): Flow<List<Recipe>> =
+        dataSource.observeRecipesByUser(uid)
+
+    suspend fun deleteRecipe(recipeId: String): Result<Unit> = runCatching {
+        dataSource.deleteRecipe(recipeId)
+    }
+
+    suspend fun updateRecipe(recipe: Recipe): Result<Unit> = runCatching {
+        dataSource.updateRecipe(recipe)
+    }
 }

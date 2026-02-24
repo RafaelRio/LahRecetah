@@ -49,9 +49,14 @@ class AuthRepository @Inject constructor(
     fun getCurrentUser(): AuthUser? =
         dataSource.getCurrentUser()
             ?.takeIf { it.isEmailVerified }
-            ?.let { AuthUser(
-                uid = it.uid,
-                email = it.email.orEmpty(),
-                displayName = it.displayName.orEmpty()
-            ) }
+            ?.let {
+                AuthUser(
+                    uid = it.uid,
+                    email = it.email.orEmpty(),
+                    displayName = it.displayName.orEmpty()
+                )
+            }
+
+    suspend fun updateDisplayName(newName: String) = dataSource.updateDisplayName(newName)
+
 }

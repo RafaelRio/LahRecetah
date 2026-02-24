@@ -69,4 +69,46 @@ class RecipeFirestoreDataSource @Inject constructor(
 
         awaitClose { listener.remove() }
     }
+
+    fun observeRecipesByUser(uid: String): Flow<List<Recipe>> = callbackFlow {
+        val listener = firestore.collection("recipes")
+            .whereEqualTo("createdByUid", uid)
+            // Si NO tienes createdAt, quita el orderBy
+            // .orderBy("createdAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error); return@addSnapshotListener
+                }
+                val recipes = snapshot?.documents?.mapNotNull { it.toRecipe() } ?: emptyList()
+                trySend(recipes)
+            }
+
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun deleteRecipe(recipeId: String) {
+        firestore.collection("recipes")
+            .document(recipeId)
+            .delete()
+            .await()
+    }
+
+    // Opcional: si quieres editar desde perfil
+    suspend fun updateRecipe(recipe: Recipe) {
+        firestore.collection("recipes")
+            .document(recipe.id)
+            .update(
+                mapOf(
+                    "title" to recipe.title,
+                    "description" to recipe.description,
+                    "ingredients" to recipe.ingredients,
+                    "steps" to recipe.steps,
+                    "durationMinutes" to recipe.durationMinutes,
+                    "category" to recipe.category.name,
+                    "difficulty" to recipe.difficulty,
+                    "imageUrl" to recipe.imageUrl
+                )
+            )
+            .await()
+    }
 }

@@ -5,6 +5,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import kotlin.coroutines.resume
 
@@ -90,4 +91,12 @@ class FirebaseAuthDataSource @Inject constructor(
     }
 
     fun getCurrentUser(): FirebaseUser? = firebaseAuth.currentUser
+
+    suspend fun updateDisplayName(newName: String) {
+        val user = firebaseAuth.currentUser ?: return
+        val request = UserProfileChangeRequest.Builder()
+            .setDisplayName(newName)
+            .build()
+        user.updateProfile(request).await()
+    }
 }

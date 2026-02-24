@@ -16,7 +16,7 @@ class GoogleLoginUseCase @Inject constructor(
             val authUser = authRepository.loginWithGoogle(credential).getOrThrow()
 
             // Verificar si el usuario ya existe en Firestore
-            val userExists = firestoreRepository.userExists(authUser.uid)
+            val userExists = firestoreRepository.userExists(authUser.email)
 
             // Si es la primera vez que inicia sesión con Google, crear su perfil
             if (!userExists) {

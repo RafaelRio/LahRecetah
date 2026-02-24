@@ -12,7 +12,13 @@ class UserFirestoreRepository @Inject constructor(
         dataSource.createUserProfile(profile)
     }
 
-    suspend fun userExists(uid: String): Boolean {
-        return dataSource.userExists(uid)
+    suspend fun userExists(email: String): Boolean {
+        return dataSource.userExists(email)
     }
+
+    suspend fun getUserProfile(email: String): UserProfile? =
+        dataSource.getUserProfile(email)
+
+    suspend fun updateUserName(email: String, newName: String) =
+        dataSource.updateUserName(email, newName)
 }
