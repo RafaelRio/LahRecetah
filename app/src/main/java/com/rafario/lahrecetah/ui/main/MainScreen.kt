@@ -2,7 +2,6 @@ package com.rafario.lahrecetah.ui.main
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -18,6 +17,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -35,7 +35,8 @@ fun MainScreen(
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val cs = MaterialTheme.colorScheme
-
+// ✅ NUEVO: recipeId que se va a editar (si es null, modo crear)
+    var editingRecipeId by remember { mutableStateOf<String?>(null) }
     val tabs = remember {
         listOf(
             TabItem(0, Icons.AutoMirrored.Filled.MenuBook),
@@ -57,7 +58,10 @@ fun MainScreen(
                         val selected = selectedTab == tab.id
                         NavigationBarItem(
                             selected = selected,
-                            onClick = { selectedTab = tab.id },
+                            onClick = {
+                                selectedTab = tab.id
+                                if (tab.id != 1) editingRecipeId = null
+                            },
                             icon = { Icon(tab.icon, contentDescription = null) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = cs.primary,
@@ -74,8 +78,19 @@ fun MainScreen(
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
                 0 -> RecipeListScreen(navHostController = navHostController)
-                1 -> AddRecipeScreen(navHostController = navHostController)
-                2 -> ProfileScreen(navHostController = navHostController)
+                1 -> AddRecipeScreen(navHostController = navHostController, editingRecipeId = editingRecipeId, onEditFinished = {
+                    // ✅ al terminar edición, vuelves a Perfil (tab 3) y limpias estado
+                    editingRecipeId = null
+                    selectedTab = 2
+                })
+                2 -> ProfileScreen(
+                    navHostController = navHostController,
+                    onEditRecipe = { recipeId ->
+                        // ✅ click desde perfil: set id y saltar a tab "Add"
+                        editingRecipeId = recipeId
+                        selectedTab = 1
+                    }
+                )
             }
         }
     }

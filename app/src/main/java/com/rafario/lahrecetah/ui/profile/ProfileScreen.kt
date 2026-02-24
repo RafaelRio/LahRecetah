@@ -64,6 +64,7 @@ import com.rafario.lahrecetah.navigation.Routes
 fun ProfileScreen(
     modifier: Modifier = Modifier,
     navHostController: NavHostController,
+    onEditRecipe: (String) -> Unit, // ✅ NUEVO
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -265,6 +266,7 @@ fun ProfileScreen(
                                 RecipeRowInSection(
                                     recipe = recipe,
                                     showDivider = !isLast,
+                                    onClick = { onEditRecipe(recipe.id) },
                                     onDelete = { viewModel.askDeleteRecipe(recipe.id, recipe.title) }
                                 )
                             }
@@ -438,6 +440,7 @@ private fun RecipeSectionInnerRow(
 private fun RecipeRowInSection(
     recipe: Recipe,
     showDivider: Boolean,
+    onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
     Row(
@@ -460,6 +463,10 @@ private fun RecipeRowInSection(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+
+        IconButton(onClick = onClick) {
+            Icon(Icons.Default.Edit, contentDescription = "Editar receta")
         }
 
         IconButton(onClick = onDelete) {

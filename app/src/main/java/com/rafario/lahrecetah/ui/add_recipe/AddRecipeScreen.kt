@@ -76,10 +76,13 @@ import java.io.File
 fun AddRecipeScreen(
     navHostController: NavHostController,
     modifier: Modifier = Modifier,
+    editingRecipeId: String?,          // ✅ NUEVO
+    onEditFinished: () -> Unit,
     viewModel: AddRecipeViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val isEditMode by viewModel.isEditMode.collectAsStateWithLifecycle()
 
     val title by viewModel.title.collectAsStateWithLifecycle()
     val description by viewModel.description.collectAsStateWithLifecycle()
@@ -105,6 +108,30 @@ fun AddRecipeScreen(
             val error = UCrop.getError(result.data!!)
             Toast.makeText(context, error?.message ?: "Error recortando imagen", Toast.LENGTH_SHORT)
                 .show()
+        }
+    }
+    LaunchedEffect(editingRecipeId) {
+        if (!editingRecipeId.isNullOrBlank()) {
+            viewModel.startEditing(editingRecipeId)
+        } else {
+            viewModel.exitEditingMode()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is AddRecipeEvent.Success -> {
+                    Toast.makeText(
+                        context,
+                        if (isEditMode) "Receta actualizada" else "Receta añadida",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    if (isEditMode) onEditFinished()
+                }
+                is AddRecipeEvent.Error -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -150,22 +177,6 @@ fun AddRecipeScreen(
                 ).show()
             }
         }
-
-
-
-    LaunchedEffect(Unit) {
-        viewModel.uiEvent.collect {
-            when (it) {
-                is AddRecipeEvent.Success -> {
-                    Toast.makeText(context, "Receta añadida", Toast.LENGTH_SHORT).show()
-                }
-
-                is AddRecipeEvent.Error -> {
-                    Toast.makeText(context, it.message, Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
 
 
 
@@ -366,7 +377,7 @@ fun AddRecipeScreen(
         }
 
         Button(
-            onClick = { viewModel.createRecipe() },
+            onClick = { if (isEditMode) viewModel.saveEdits() else viewModel.createRecipe() },
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter),
@@ -380,7 +391,7 @@ fun AddRecipeScreen(
                 Spacer(Modifier.width(10.dp))
                 Text("Guardando…")
             } else {
-                Text("Guardar Receta")
+                Text(if (isEditMode) "Guardar cambios" else "Guardar receta")
             }
         }
     }
