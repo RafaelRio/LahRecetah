@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,8 +29,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +40,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.rafario.lahrecetah.domain.model.Recipe
 import com.rafario.lahrecetah.domain.model.RecipeCategory
@@ -64,10 +63,10 @@ import com.rafario.lahrecetah.navigation.Routes
 fun ProfileScreen(
     modifier: Modifier = Modifier,
     navHostController: NavHostController,
-    onEditRecipe: (String) -> Unit, // ✅ NUEVO
+    onEditRecipe: (String) -> Unit,
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     // Dropdown state para "Mis recetas"
     var recipesExpanded by rememberSaveable { mutableStateOf(false) }
@@ -134,13 +133,11 @@ fun ProfileScreen(
             uiState.profile != null -> {
                 val profile = uiState.profile!!
 
-                // ✅ Un solo scroll (LazyColumn) para toda la pantalla
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 16.dp),
                 ) {
 
-                    // Header
                     item {
                         Card(
                             shape = RoundedCornerShape(16.dp),
@@ -184,35 +181,11 @@ fun ProfileScreen(
 
                     item { Spacer(Modifier.height(16.dp)) }
 
-                    // App
-                    item {
-                        SectionCard(title = "Aplicación") {
-                            SettingRow(
-                                title = "Preferencias",
-                                subtitle = "Notificaciones, tema, etc.",
-                                trailing = { TextButton(onClick = { /* TODO */ }) { Text("Abrir") } })
-
-                            Divider()
-
-                            SettingRow(
-                                title = "Ayuda",
-                                subtitle = "Soporte y preguntas frecuentes",
-                                trailing = { TextButton(onClick = { /* TODO */ }) { Text("Ver") } })
-                        }
-                    }
-
-                    item { Spacer(Modifier.height(16.dp)) }
-
-                    // -------------------------------------------------------------
-                    // ✅ MIS RECETAS: "UNA MISMA TARJETA" (header + lista dentro)
-                    // Se pinta como varios items, pero visualmente es una sola card.
-                    // -------------------------------------------------------------
 
                     val recipes = uiState.myRecipes
                     val hasRecipes = recipes.isNotEmpty()
                     val showList = recipesExpanded && hasRecipes && !uiState.isLoadingRecipes
 
-                    // 1) Header de la "tarjeta" (con esquinas arriba redondeadas)
                     item {
                         RecipeSectionTop(
                             title = "Mis recetas",
@@ -226,11 +199,10 @@ fun ProfileScreen(
                             onToggle = { recipesExpanded = !recipesExpanded })
                     }
 
-                    // 2) Si está cargando, metemos una fila “interna” dentro de la misma tarjeta
                     if (uiState.isLoadingRecipes) {
                         item {
                             RecipeSectionInnerRow(
-                                isLast = true, // cierra la tarjeta visualmente
+                                isLast = true,
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     CircularProgressIndicator(modifier = Modifier.size(18.dp))
@@ -241,7 +213,6 @@ fun ProfileScreen(
                         }
                     }
 
-                    // 3) Si está vacío, metemos fila “interna” y cerramos la tarjeta
                     if (!uiState.isLoadingRecipes && !hasRecipes) {
                         item {
                             RecipeSectionInnerRow(isLast = true) {
@@ -254,12 +225,9 @@ fun ProfileScreen(
                         }
                     }
 
-                    // 4) Si hay recetas y está expandido: items virtualizados “dentro” de la tarjeta
                     if (showList) {
                         items(
-                            items = recipes,
-                            key = { it.id }
-                        ) { recipe ->
+                            items = recipes, key = { it.id }) { recipe ->
                             val isLast = recipe.id == recipes.last().id
 
                             RecipeSectionInnerRow(isLast = isLast) {
@@ -267,13 +235,15 @@ fun ProfileScreen(
                                     recipe = recipe,
                                     showDivider = !isLast,
                                     onClick = { onEditRecipe(recipe.id) },
-                                    onDelete = { viewModel.askDeleteRecipe(recipe.id, recipe.title) }
-                                )
+                                    onDelete = {
+                                        viewModel.askDeleteRecipe(
+                                            recipe.id, recipe.title
+                                        )
+                                    })
                             }
                         }
 
                     } else if (!uiState.isLoadingRecipes && hasRecipes) {
-                        // 5) Si hay recetas pero está colapsado, cerramos la tarjeta con una fila “interna” fina.
                         item {
                             RecipeSectionInnerRow(isLast = true) {
                                 Text(
@@ -287,7 +257,6 @@ fun ProfileScreen(
 
                     item { Spacer(Modifier.height(16.dp)) }
 
-                    // Logout
                     item {
                         Card(
                             shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(
@@ -364,27 +333,20 @@ fun ProfileScreen(
 
 @Composable
 private fun RecipeSectionTop(
-    title: String,
-    subtitle: String,
-    expanded: Boolean,
-    enabled: Boolean,
-    onToggle: () -> Unit
+    title: String, subtitle: String, expanded: Boolean, enabled: Boolean, onToggle: () -> Unit
 ) {
     val shapeTop = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
 
     Surface(
         shape = shapeTop,
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,   // 👈 MISMO tono que las filas internas
-        shadowElevation = 1.dp   // 👈 sombra exterior arriba
+        tonalElevation = 1.dp,
+        shadowElevation = 1.dp
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(enabled = enabled) { onToggle() }
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { onToggle() }
+            .padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
@@ -412,8 +374,7 @@ private fun RecipeSectionTop(
 
 @Composable
 private fun RecipeSectionInnerRow(
-    isLast: Boolean,
-    content: @Composable () -> Unit
+    isLast: Boolean, content: @Composable () -> Unit
 ) {
     val shape = when {
         isLast -> RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
@@ -424,7 +385,7 @@ private fun RecipeSectionInnerRow(
         shape = shape,
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp,
-        shadowElevation = 1.dp // 👈 también en las del medio
+        shadowElevation = 1.dp
     ) {
         Column(
             modifier = Modifier
@@ -438,14 +399,10 @@ private fun RecipeSectionInnerRow(
 
 @Composable
 private fun RecipeRowInSection(
-    recipe: Recipe,
-    showDivider: Boolean,
-    onClick: () -> Unit,
-    onDelete: () -> Unit
+    recipe: Recipe, showDivider: Boolean, onClick: () -> Unit, onDelete: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -474,7 +431,7 @@ private fun RecipeRowInSection(
         }
     }
 
-    if (showDivider) Divider()
+    if (showDivider) HorizontalDivider()
 }
 
 @Composable
@@ -499,49 +456,6 @@ private fun ProfileAvatar(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onPrimaryContainer
         )
-    }
-}
-
-@Composable
-private fun SectionCard(
-    title: String, content: @Composable ColumnScope.() -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                content()
-            })
-    }
-}
-
-@Composable
-private fun SettingRow(
-    title: String, subtitle: String, trailing: @Composable () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        trailing()
     }
 }
 

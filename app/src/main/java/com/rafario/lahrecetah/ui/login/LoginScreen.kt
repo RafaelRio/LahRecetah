@@ -41,6 +41,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,23 +71,31 @@ fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(),
     navHostController: NavHostController
 ) {
-    val email by viewModel.email.collectAsStateWithLifecycle()
-    val password by viewModel.password.collectAsStateWithLifecycle()
-    val rememberMe by viewModel.rememberMe.collectAsStateWithLifecycle()
-    val errorMessage by viewModel.error.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
-    val loginEvent = viewModel.loginEvent
     val context = LocalContext.current
-    var goToRegister by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val snackbarHostState = remember { SnackbarHostState() }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    var goToRegister by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
+
+    val snackbarHostState = remember {
+        SnackbarHostState()
+    }
 
     val gso = remember {
-        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(context.getString(R.string.default_web_client_id)).requestEmail()
+        GoogleSignInOptions
+            .Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(
+                context.getString(R.string.default_web_client_id)
+            )
+            .requestEmail()
             .build()
     }
+
     val googleSignInClient = remember {
         GoogleSignIn.getClient(context, gso)
     }
@@ -94,44 +103,68 @@ fun LoginScreen(
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        val task = GoogleSignIn.getSignedInAccountFromIntent(
+            result.data
+        )
+
         try {
-            val account = task.getResult(ApiException::class.java)
-            val credential = GoogleAuthProvider.getCredential(account.idToken, null)
+            val account = task.getResult(
+                ApiException::class.java
+            )
+
+            val credential = GoogleAuthProvider.getCredential(
+                account.idToken,
+                null
+            )
+
             viewModel.loginWithGoogle(credential)
         } catch (e: ApiException) {
             Toast.makeText(
-                context, "Error al iniciar sesión con Google: ${e.message}", Toast.LENGTH_SHORT
+                context,
+                "Error al iniciar sesión con Google: ${e.message}",
+                Toast.LENGTH_SHORT
             ).show()
         }
     }
 
     fun startGoogleSignIn() {
-        googleSignInClient.signOut().addOnCompleteListener {
-            launcher.launch(googleSignInClient.signInIntent)
-        }
+        googleSignInClient
+            .signOut()
+            .addOnCompleteListener {
+                launcher.launch(
+                    googleSignInClient.signInIntent
+                )
+            }
     }
 
     LaunchedEffect(Unit) {
-        loginEvent.collect { event ->
+        viewModel.loginEvent.collect { event ->
             when (event) {
-                is LoginEvent.Success -> {
+                LoginEvent.Success -> {
                     navHostController.navigate(Routes.MAIN) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
+                        popUpTo(Routes.LOGIN) {
+                            inclusive = true
+                        }
                     }
                 }
 
                 is LoginEvent.Error -> {
-                    snackbarHostState.showSnackbar(event.message ?: "Error")
+                    snackbarHostState.showSnackbar(
+                        event.message ?: "Error"
+                    )
                 }
             }
         }
     }
 
-    Scaffold(snackbarHost = {
-        SnackbarHost(hostState = snackbarHostState)
-    }) { innerPadding ->
-
+    Scaffold(
+        modifier = modifier,
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState
+            )
+        }
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -139,57 +172,88 @@ fun LoginScreen(
                 .padding(horizontal = 21.dp)
                 .verticalScroll(rememberScrollState())
                 .padding(
-                    bottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+                    bottom = WindowInsets.ime
+                        .asPaddingValues()
+                        .calculateBottomPadding()
                 ),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Image(painter = painterResource(R.drawable.playstore), contentDescription = "Logo")
-            Text("Iniciar sesión", style = MaterialTheme.typography.displayMedium)
-
-            Spacer(Modifier.height(16.dp))
-
-            CustomOutlineTextField(
-                value = email, onValueChange = {
-                    viewModel.onEmailChanged(it)
-                }, label = "Correo",
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+            Image(
+                painter = painterResource(R.drawable.playstore),
+                contentDescription = "Logo"
             )
 
-            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Iniciar sesión",
+                style = MaterialTheme.typography.displayMedium
+            )
+
+            Spacer(
+                Modifier.height(16.dp)
+            )
 
             CustomOutlineTextField(
-                value = password,
-                onValueChange = {
-                    viewModel.onPasswordChanged(it)
-                },
+                value = uiState.email,
+                onValueChange = viewModel::onEmailChanged,
+                label = "Correo",
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email
+                )
+            )
+
+            Spacer(
+                Modifier.height(8.dp)
+            )
+
+            CustomOutlineTextField(
+                value = uiState.password,
+                onValueChange = viewModel::onPasswordChanged,
                 label = "Contraseña",
                 isPassword = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password
+                )
             )
 
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Checkbox(
-                    checked = rememberMe, onCheckedChange = { viewModel.onRememberMeChanged(it) })
+                    checked = uiState.rememberMe,
+                    onCheckedChange = viewModel::onRememberMeChanged
+                )
+
                 Text("Recordarme")
-                Spacer(Modifier.weight(1f))
+
+                Spacer(
+                    Modifier.weight(1f)
+                )
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(
+                Modifier.height(8.dp)
+            )
 
-            Button(onClick = {
-                viewModel.login()
-            }, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = viewModel::login,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isLoading
+            ) {
                 Text("Iniciar sesión")
             }
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(
+                Modifier.height(4.dp)
+            )
 
             OutlinedButton(
                 onClick = {
                     startGoogleSignIn()
-                }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.outlinedButtonColors(
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isLoading,
+                colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = Color.White
                 )
             ) {
@@ -198,15 +262,25 @@ fun LoginScreen(
                     contentDescription = "Google Logo",
                     modifier = Modifier.size(20.dp)
                 )
-                Spacer(Modifier.padding(horizontal = 8.dp))
-                Text("Continuar con Google", color = Color.Black)
+
+                Spacer(
+                    Modifier.padding(horizontal = 8.dp)
+                )
+
+                Text(
+                    text = "Continuar con Google",
+                    color = Color.Black
+                )
             }
 
-            TextButton(onClick = {
-                goToRegister = true
-            }, content = {
+            TextButton(
+                onClick = {
+                    goToRegister = true
+                },
+                enabled = !uiState.isLoading
+            ) {
                 Text("Registrarse")
-            })
+            }
 
             if (goToRegister) {
                 ModalBottomSheet(
@@ -216,25 +290,30 @@ fun LoginScreen(
                     sheetState = sheetState,
                     containerColor = ModalBackground,
                     properties = ModalBottomSheetProperties(
-                        securePolicy = SecureFlagPolicy.SecureOn, shouldDismissOnBackPress = false
+                        securePolicy = SecureFlagPolicy.SecureOn,
+                        shouldDismissOnBackPress = false
                     )
                 ) {
                     Box(
-                        Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         RegisterScreen(
-                            navHostController = navHostController,
-                            onDismiss = { goToRegister = false })
+                            onDismiss = {
+                                goToRegister = false
+                            }
+                        )
                     }
                 }
             }
         }
 
-        if (isLoading) {
+        if (uiState.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.3f)),
+                    .background(
+                        Color.Black.copy(alpha = 0.3f)
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()

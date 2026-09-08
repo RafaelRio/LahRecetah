@@ -17,16 +17,16 @@ import androidx.navigation.NavHostController
 import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.navigation.Routes
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun SplashScreen(
     navHostController: NavHostController,
-    modifier: Modifier = Modifier,
     viewModel: SplashViewModel = hiltViewModel()
 ) {
 
     LaunchedEffect(Unit) {
-        delay(2000)
+        delay(2000.milliseconds)
         viewModel.startDestination.collect { destination ->
             navHostController.navigate(destination) {
                 popUpTo(Routes.SPLASH) { inclusive = true }

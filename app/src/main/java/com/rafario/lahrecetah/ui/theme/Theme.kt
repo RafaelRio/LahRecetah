@@ -13,7 +13,6 @@ import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
 
-    // === COLORES DE MARCA ===
     primary = Primary.copy(alpha = 0.9f),
     onPrimary = Color(0xFF1E1E1E),
 
@@ -23,7 +22,6 @@ private val DarkColorScheme = darkColorScheme(
     tertiary = Tertiary.copy(alpha = 0.9f),
     onTertiary = Color(0xFF1E1E1E),
 
-    // === FONDOS ===
     background = Color(0xFF121212),
     onBackground = Color(0xFFEAEAEA),
 
@@ -33,7 +31,6 @@ private val DarkColorScheme = darkColorScheme(
     surfaceVariant = Color(0xFF2A2A2A),
     onSurfaceVariant = Color(0xFFD6D6D6),
 
-    // === ESTADOS ===
     error = Error,
     onError = OnError
 )
@@ -49,7 +46,7 @@ private val LightColorScheme = lightColorScheme(
     onTertiary = OnTertiary,
 
     background = AppBackground,
-    onBackground = OnSecondary, // texto sobre fondo claro
+    onBackground = OnSecondary,
 
     surface = Surface,
     onSurface = OnSecondary,

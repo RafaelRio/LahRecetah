@@ -29,7 +29,7 @@ fun AppNavGraph(
         }
 
         composable(Routes.REGISTER) {
-            RegisterScreen(navHostController = navHostController)
+            RegisterScreen()
         }
 
         composable(Routes.MAIN) {

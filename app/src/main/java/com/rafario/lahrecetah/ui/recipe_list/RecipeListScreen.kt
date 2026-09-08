@@ -43,7 +43,6 @@ import com.rafario.lahrecetah.domain.model.RecipeCategory
 
 @Composable
 fun RecipeListScreen(
-    modifier: Modifier = Modifier,
     navHostController: NavHostController,
     viewModel: RecipeListViewModel = hiltViewModel(),
 ) {
@@ -66,10 +65,30 @@ fun RecipeListScreen(
         is RecipeListUiState.Success -> {
             val recipes = (uiState as RecipeListUiState.Success).recipes
 
-            LazyColumn(modifier = Modifier.padding(all = 20.dp)) {
-                items(recipes) { recipe ->
-                    RecipeListItem(recipe) {
-                        navHostController.navigate("recipe_detail/${recipe.id}")
+            if (recipes.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Todavía no hay recetas disponibles",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.padding(all = 20.dp)
+                ) {
+                    items(
+                        items = recipes,
+                        key = { recipe -> recipe.id }
+                    ) { recipe ->
+                        RecipeListItem(recipe) {
+                            navHostController.navigate(
+                                "recipe_detail/${recipe.id}"
+                            )
+                        }
                     }
                 }
             }

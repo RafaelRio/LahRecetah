@@ -9,6 +9,7 @@ import com.rafario.lahrecetah.domain.model.Recipe
 import com.rafario.lahrecetah.domain.model.UserProfile
 import com.rafario.lahrecetah.domain.usecase.users.LogoutUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
@@ -32,6 +34,8 @@ class ProfileViewModel @Inject constructor(
 
     private val _logoutEvent = MutableSharedFlow<Unit>()
     val logoutEvent = _logoutEvent.asSharedFlow()
+
+    private var recipesJob: Job? = null
 
     init {
         loadProfile()
@@ -63,9 +67,14 @@ class ProfileViewModel @Inject constructor(
                     )
 
                 _uiState.update { it.copy(isLoading = false, profile = profile) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(isLoading = false, errorMessage = e.message ?: "Error cargando perfil")
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.message ?: "Error cargando perfil"
+                    )
                 }
             }
         }
@@ -83,8 +92,13 @@ class ProfileViewModel @Inject constructor(
             try {
                 userFirestoreRepository.updateUserName(current.email, newName.trim())
 
-                // opcional (si implementaste el paso 2)
-                runCatching { authRepository.updateDisplayName(newName.trim()) }
+                try {
+                    authRepository.updateDisplayName(newName.trim())
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // El nombre ya se actualizó en Firestore; no bloqueamos el flujo por Auth.
+                }
 
                 _uiState.update {
                     it.copy(
@@ -115,7 +129,9 @@ class ProfileViewModel @Inject constructor(
     }
 
     private fun observeMyRecipes(uid: String) {
-        viewModelScope.launch {
+        recipesJob?.cancel()
+
+        recipesJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoadingRecipes = true) }
 
             recipeRepository.observeRecipesByUser(uid)
@@ -154,10 +170,9 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isDeletingRecipe = true, errorMessage = null) }
 
-            val result = recipeRepository.deleteRecipe(pending.id) // :contentReference[oaicite:13]{index=13}
+            val result = recipeRepository.deleteRecipe(pending.id)
             result.fold(
                 onSuccess = {
-                    // quitamos de la lista local (además el Flow se actualizará por snapshot)
                     _uiState.update {
                         it.copy(
                             isDeletingRecipe = false,
@@ -191,11 +206,11 @@ data class ProfileUiState(
     val profile: UserProfile? = null,
     val errorMessage: String? = null,
 
-    // NUEVO: Mis recetas
+    // Recetas del usuario
     val isLoadingRecipes: Boolean = false,
     val myRecipes: List<Recipe> = emptyList(),
 
-    // NUEVO: Borrado
+    // Estado de borrado
     val pendingDeleteRecipe: PendingDeleteRecipe? = null,
     val isDeletingRecipe: Boolean = false
 )

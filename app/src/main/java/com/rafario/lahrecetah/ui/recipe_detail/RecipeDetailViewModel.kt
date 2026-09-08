@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.rafario.lahrecetah.domain.model.Recipe
 import com.rafario.lahrecetah.domain.usecase.recipes.ObserveRecipeByIdUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -20,8 +21,12 @@ class RecipeDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(RecipeDetailUiState())
     val uiState = _uiState.asStateFlow()
 
+    private var recipeJob: Job? = null
+
     fun loadRecipe(recipeId: String) {
-        viewModelScope.launch {
+        recipeJob?.cancel()
+
+        recipeJob = viewModelScope.launch {
             _uiState.value = RecipeDetailUiState(isLoading = true)
 
             observeRecipeByIdUseCase(recipeId)

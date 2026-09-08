@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -29,88 +28,102 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineTextField
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RegisterScreen(
     modifier: Modifier = Modifier,
     viewModel: RegisterViewModel = hiltViewModel(),
-    navHostController: NavHostController,
     onDismiss: () -> Unit = {}
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val name by viewModel.name.collectAsStateWithLifecycle()
-    val email by viewModel.email.collectAsStateWithLifecycle()
-    val password by viewModel.password.collectAsStateWithLifecycle()
-    val registerEvent = viewModel.registerEvent
-    val snackbarHostState = remember { SnackbarHostState() }
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val snackbarHostState = remember {
+        SnackbarHostState()
+    }
 
     LaunchedEffect(Unit) {
-        registerEvent.collect { event ->
+        viewModel.registerEvent.collect { event ->
             when (event) {
-                is RegisterEvent.Success -> {
-                    snackbarHostState.showSnackbar("Revisa tu correo para confirmar la cuenta")
+                RegisterEvent.Success -> {
+                    snackbarHostState.showSnackbar(
+                        "Revisa tu correo para confirmar la cuenta"
+                    )
+
                     onDismiss()
                 }
 
                 is RegisterEvent.Error -> {
-                    snackbarHostState.showSnackbar(event.message ?: "Error desconocido")
+                    snackbarHostState.showSnackbar(
+                        event.message ?: "Error desconocido"
+                    )
                 }
             }
         }
     }
 
-    Box {
+    Box(
+        modifier = modifier
+    ) {
         Column(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(horizontal = 20.dp)
         ) {
+            Text(
+                text = "Registro",
+                style = MaterialTheme.typography.displayMedium
+            )
 
-            Text("Registro", style = MaterialTheme.typography.displayMedium)
             CustomOutlineTextField(
-                value = name,
-                onValueChange = { viewModel.onNameChanged(it) },
+                value = uiState.name,
+                onValueChange = viewModel::onNameChanged,
                 label = "Nombre",
                 modifier = Modifier.padding(top = 10.dp)
             )
 
             CustomOutlineTextField(
-                value = email,
-                onValueChange = { viewModel.onEmailChanged(it) },
+                value = uiState.email,
+                onValueChange = viewModel::onEmailChanged,
                 label = "Email",
                 modifier = Modifier.padding(top = 10.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email
+                )
             )
 
             CustomOutlineTextField(
-                value = password,
-                onValueChange = { viewModel.onPasswordChanged(it) },
+                value = uiState.password,
+                onValueChange = viewModel::onPasswordChanged,
                 label = "Contraseña",
                 modifier = Modifier.padding(top = 10.dp),
                 isPassword = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password
+                )
             )
 
             Button(
-                onClick = {
-                    viewModel.register()
-                }, modifier = Modifier
+                onClick = viewModel::register,
+                modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 21.dp)
+                    .padding(vertical = 21.dp),
+                enabled = !uiState.isLoading
             ) {
                 Text("Registrarse")
             }
         }
+
         SnackbarHost(
-            hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter)
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
         )
 
-        if (isLoading) {
+        if (uiState.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.3f)),
+                    .background(
+                        Color.Black.copy(alpha = 0.3f)
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()

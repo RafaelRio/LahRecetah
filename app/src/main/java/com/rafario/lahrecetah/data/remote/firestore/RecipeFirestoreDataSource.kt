@@ -73,8 +73,6 @@ class RecipeFirestoreDataSource @Inject constructor(
     fun observeRecipesByUser(uid: String): Flow<List<Recipe>> = callbackFlow {
         val listener = firestore.collection("recipes")
             .whereEqualTo("createdByUid", uid)
-            // Si NO tienes createdAt, quita el orderBy
-            // .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error); return@addSnapshotListener
@@ -93,7 +91,6 @@ class RecipeFirestoreDataSource @Inject constructor(
             .await()
     }
 
-    // Opcional: si quieres editar desde perfil
     suspend fun updateRecipe(recipe: Recipe) {
         firestore.collection("recipes")
             .document(recipe.id)

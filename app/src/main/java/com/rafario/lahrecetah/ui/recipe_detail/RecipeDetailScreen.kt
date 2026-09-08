@@ -85,10 +85,8 @@ fun RecipeDetailScreen(
             state.recipe != null -> {
                 val recipe = state.recipe!!
 
-                // Fondo general scrollable
                 Box(Modifier.fillMaxSize()) {
 
-                    // --- HERO IMAGE (fondo) ---
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -109,7 +107,6 @@ fun RecipeDetailScreen(
                             )
                         }
 
-                        // Degradado sutil
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
@@ -185,7 +182,6 @@ fun RecipeDetailScreen(
                             contentPadding = PaddingValues(top = 16.dp, bottom = 60.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // META
                             item {
                                 MetaStripCard(
                                     durationMinutes = recipe.durationMinutes,
@@ -195,7 +191,6 @@ fun RecipeDetailScreen(
                                 )
                             }
 
-                            // DESCRIPCIÓN
                             if (recipe.description.isNotBlank()) {
                                 item {
                                     SectionCard(
@@ -211,7 +206,6 @@ fun RecipeDetailScreen(
                                 }
                             }
 
-                            // INGREDIENTES
                             if (recipe.ingredients.isNotEmpty()) {
                                 item {
                                     SectionCard(
@@ -230,7 +224,6 @@ fun RecipeDetailScreen(
                                 }
                             }
 
-                            // PASOS
                             if (recipe.steps.isNotEmpty()) {
                                 item {
                                     Text(
@@ -360,7 +353,6 @@ private fun IngredientRow(text: String, icon: ImageVector) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Icono “semántico”
         Surface(
             shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
@@ -422,7 +414,6 @@ private fun ingredientIcon(ingredient: String): ImageVector {
     val t = ingredient.lowercase().trim()
 
     return when {
-        // Proteínas
         listOf(
             "pollo",
             "carne",
@@ -437,11 +428,9 @@ private fun ingredientIcon(ingredient: String): ImageVector {
         )
             .any { it in t } -> Icons.Default.Restaurant
 
-        // Bebidas y lácteos
         listOf("leche", "nata", "yogur", "kefir", "agua", "vino", "cerveza", "zumo", "jugo")
             .any { it in t } -> Icons.Default.LocalDrink
 
-        // Verduras / frutas
         listOf(
             "tomate",
             "cebolla",
@@ -456,7 +445,6 @@ private fun ingredientIcon(ingredient: String): ImageVector {
         )
             .any { it in t } -> Icons.Default.Agriculture
 
-        // Granos / harinas / pan
         listOf(
             "harina",
             "pan",
@@ -470,7 +458,6 @@ private fun ingredientIcon(ingredient: String): ImageVector {
         )
             .any { it in t } -> Icons.Default.Eco
 
-        // Especias / condimentos
         listOf(
             "sal",
             "pimienta",
@@ -483,7 +470,6 @@ private fun ingredientIcon(ingredient: String): ImageVector {
         )
             .any { it in t } -> Icons.Default.Spa
 
-        // Café / té / chocolate (como “extra visual”)
         listOf("café", "cafe", "té", "te", "chocolate", "cacao")
             .any { it in t } -> Icons.Default.EmojiFoodBeverage
 

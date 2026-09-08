@@ -6,6 +6,7 @@ import com.rafario.lahrecetah.data.repository.UserFirestoreRepository
 import com.rafario.lahrecetah.domain.model.AuthUser
 import com.rafario.lahrecetah.domain.model.UserProfile
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 
 class GoogleLoginUseCase @Inject constructor(
     private val authRepository: AuthRepository,
@@ -29,6 +30,8 @@ class GoogleLoginUseCase @Inject constructor(
             }
 
             Result.success(authUser)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }

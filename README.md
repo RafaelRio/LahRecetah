@@ -4,6 +4,7 @@ Aplicación Android para **crear, descubrir y gestionar recetas de cocina**.
 
 Desarrollada con **Kotlin** y **Jetpack Compose**, utilizando **Firebase** como backend e implementando una arquitectura basada en **MVVM**, separación por capas y casos de uso.
 
+> **Antes de ejecutarla:** esta versión utiliza Firebase como backend. Para configurar Authentication, Firestore, Storage y Google Sign-In en un entorno local, sigue la sección [Configuración de Firebase](#-configuración-de-firebase).
 ---
 
 ## ✨ Funcionalidades
@@ -268,7 +269,7 @@ Los `ViewModel`, repositories, fuentes de datos y servicios de Firebase se propo
 ## ⚙️ Requisitos
 
 * Android Studio
-* Java 11
+* JDK 17 o 21 para ejecutar Gradle (verificado localmente con JDK 17). El destino de bytecode Java/Kotlin está configurado en 11.
 * `minSdk 30`
 * `targetSdk 36`
 * `compileSdk 36`
@@ -297,7 +298,9 @@ Accede al proyecto:
 cd LahRecetah
 ```
 
-Abre el proyecto con **Android Studio** y sincroniza Gradle.
+Abre el proyecto con **Android Studio**, selecciona un JDK compatible como Gradle JDK y sincroniza Gradle. Para ejecutar comandos en terminal, configura también `JAVA_HOME` con ese JDK.
+
+Antes de probar autenticación y recetas, completa la [configuración de Firebase](#-configuración-de-firebase). El archivo incluido en el repositorio identifica un proyecto Firebase, pero no garantiza acceso a sus servicios ni autoriza nuevas firmas de debug.
 
 Para compilar el APK de debug:
 
@@ -315,7 +318,9 @@ app/build/outputs/apk/debug/
 
 ## 🔥 Configuración de Firebase
 
-Para utilizar tu propio proyecto de Firebase:
+### Compilar y ejecutar con tu propio backend
+
+Cada persona que compile con un certificado distinto debe registrar esa firma para utilizar Google Sign-In. No es necesario registrar cada teléfono: se registra la firma del APK.
 
 1. Crea un proyecto en Firebase.
 2. Registra una aplicación Android con el package:
@@ -324,20 +329,32 @@ Para utilizar tu propio proyecto de Firebase:
 com.rafario.lahrecetah
 ```
 
-3. Configura:
+3. Obtén las huellas de la firma de debug desde la raíz del repositorio:
 
-   * Firebase Authentication.
-   * Autenticación con Google.
-   * Cloud Firestore.
-   * Firebase Storage.
+```bash
+./gradlew :app:signingReport
+```
 
-4. Descarga `google-services.json`.
+En Windows, utiliza `gradlew.bat :app:signingReport`. Copia la **SHA-1 de la variante debug** y añádela en Firebase → Configuración del proyecto → Tus aplicaciones → aplicación Android → Huellas digitales del certificado.
 
-5. Colócalo en:
+4. En Authentication → Método de inicio de sesión, habilita **Correo electrónico/contraseña** y **Google**; completa el correo de soporte que solicite la consola.
+5. Crea Cloud Firestore y Firebase Storage. Configura las reglas de acceso de acuerdo con la identidad y propiedad de los datos. Las reglas e índices se gestionan directamente desde el proyecto Firebase y deben estar configurados antes de ejecutar la aplicación.
+6. Descarga el `google-services.json` actualizado después de configurar Google y la firma. Sustituye el archivo situado en:
 
 ```text
 app/google-services.json
 ```
+
+7. Sincroniza Gradle y vuelve a compilar/ejecutar la aplicación.
+
+Para el acceso con email, verifica el correo recibido antes de iniciar sesión. Durante el registro, el perfil del usuario se guarda en Firestore mientras la sesión sigue autenticada. Una vez completado correctamente el alta, la aplicación cierra la sesión para exigir la verificación del correo antes del primer acceso.
+Consulta la [guía oficial de Google Sign-In con Firebase](https://firebase.google.com/docs/auth/android/google-signin).
+
+### Si Google muestra error 10
+
+Comprueba que el proyecto Firebase, el package `com.rafario.lahrecetah`, el cliente OAuth y la SHA-1 corresponden al APK que estás ejecutando. Una firma creada en otro ordenador puede tener una SHA-1 diferente. Después de registrar la firma, descarga la configuración actualizada y recompila.
+
+El código utiliza `default_web_client_id` para solicitar el token de Google: debe ser el cliente OAuth **web**, no el identificador del cliente Android.
 
 ---
 

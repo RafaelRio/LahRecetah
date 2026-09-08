@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -33,15 +34,27 @@ fun MainScreen(
     modifier: Modifier = Modifier,
     navHostController: NavHostController
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val cs = MaterialTheme.colorScheme
-// ✅ NUEVO: recipeId que se va a editar (si es null, modo crear)
-    var editingRecipeId by remember { mutableStateOf<String?>(null) }
+
+    var editingRecipeId by rememberSaveable { mutableStateOf<String?>(null) }
     val tabs = remember {
         listOf(
-            TabItem(0, Icons.AutoMirrored.Filled.MenuBook),
-            TabItem(1, Icons.Default.Add),
-            TabItem(2, Icons.Default.Person)
+            TabItem(
+                id = 0,
+                icon = Icons.AutoMirrored.Filled.MenuBook,
+                label = "Recetas"
+            ),
+            TabItem(
+                id = 1,
+                icon = Icons.Default.Add,
+                label = "Añadir receta"
+            ),
+            TabItem(
+                id = 2,
+                icon = Icons.Default.Person,
+                label = "Perfil"
+            )
         )
     }
 
@@ -62,7 +75,7 @@ fun MainScreen(
                                 selectedTab = tab.id
                                 if (tab.id != 1) editingRecipeId = null
                             },
-                            icon = { Icon(tab.icon, contentDescription = null) },
+                            icon = { Icon(tab.icon, contentDescription = tab.label) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = cs.primary,
                                 unselectedIconColor = cs.onSurfaceVariant.copy(alpha = 0.65f),
@@ -78,15 +91,13 @@ fun MainScreen(
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
                 0 -> RecipeListScreen(navHostController = navHostController)
-                1 -> AddRecipeScreen(navHostController = navHostController, editingRecipeId = editingRecipeId, onEditFinished = {
-                    // ✅ al terminar edición, vuelves a Perfil (tab 3) y limpias estado
+                1 -> AddRecipeScreen(editingRecipeId = editingRecipeId, onEditFinished = {
                     editingRecipeId = null
                     selectedTab = 2
                 })
                 2 -> ProfileScreen(
                     navHostController = navHostController,
                     onEditRecipe = { recipeId ->
-                        // ✅ click desde perfil: set id y saltar a tab "Add"
                         editingRecipeId = recipeId
                         selectedTab = 1
                     }
@@ -98,5 +109,6 @@ fun MainScreen(
 
 data class TabItem(
     val id: Int,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val label: String
 )

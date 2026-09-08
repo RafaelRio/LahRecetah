@@ -3,15 +3,16 @@ package com.rafario.lahrecetah.ui.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.AuthCredential
-import com.rafario.lahrecetah.domain.model.UserProfile
 import com.rafario.lahrecetah.domain.usecase.users.GoogleLoginUseCase
 import com.rafario.lahrecetah.domain.usecase.users.LoginUserUseCase
 import com.rafario.lahrecetah.domain.usecase.users.SaveRememberMeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,99 +23,155 @@ class LoginViewModel @Inject constructor(
     private val saveRememberMeUseCase: SaveRememberMeUseCase
 ) : ViewModel() {
 
-    private val _email = MutableStateFlow("")
-    var email = _email.asStateFlow()
-    private val _password = MutableStateFlow("")
-    var password = _password.asStateFlow()
-    private val _rememberMe = MutableStateFlow(false)
-    var rememberMe = _rememberMe.asStateFlow()
-    private val _error = MutableStateFlow<String?>(null)
-    val error = _error.asStateFlow()
+    private val _uiState = MutableStateFlow(LoginUiState())
+    val uiState = _uiState.asStateFlow()
+
     private val _loginEvent = MutableSharedFlow<LoginEvent>()
     val loginEvent = _loginEvent.asSharedFlow()
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading = _isLoading.asStateFlow()
+
+    fun onEmailChanged(value: String) {
+        _uiState.update {
+            it.copy(email = value)
+        }
+    }
+
+    fun onPasswordChanged(value: String) {
+        _uiState.update {
+            it.copy(password = value)
+        }
+    }
+
+    fun onRememberMeChanged(value: Boolean) {
+        _uiState.update {
+            it.copy(rememberMe = value)
+        }
+    }
 
     fun login() {
+        val state = _uiState.value
+
+        if (state.isLoading) {
+            return
+        }
+
+        if (state.email.isBlank() || state.password.isBlank()) {
+            emitError("Email y contraseña obligatorios")
+            return
+        }
+
+        _uiState.update {
+            it.copy(isLoading = true)
+        }
+
         viewModelScope.launch {
-            if (_email.value.isBlank() || _password.value.isBlank()) {
-                _loginEvent.emit(LoginEvent.Error("Email y contraseña obligatorios"))
-                return@launch
-            }
+            try {
+                val result = loginUserUseCase(
+                    state.email.trim(),
+                    state.password
+                )
 
-            _isLoading.value = true
+                if (result.isSuccess) {
+                    saveRememberMeUseCase(state.rememberMe)
 
-            val result = loginUserUseCase(_email.value.trim(), _password.value)
-            if (result.isSuccess) {
-                saveRememberMeUseCase(_rememberMe.value)
-                val authUser = result.getOrNull()
-                if (authUser != null) {
-                    val userName = authUser.displayName ?: _email.value.split("@").first()
+                    _loginEvent.emit(LoginEvent.Success)
+                } else {
                     _loginEvent.emit(
-                        LoginEvent.Success(
-                            user = UserProfile(
-                                uid = authUser.uid,
-                                name = userName,
-                                email = authUser.email
-                            )
+                        LoginEvent.Error(
+                            result.exceptionOrNull()?.message
+                                ?: "No se pudo iniciar sesión"
                         )
                     )
-                } else {
-                    _loginEvent.emit(LoginEvent.Error("Error al obtener datos del usuario"))
                 }
-            } else {
-                _error.value = result.exceptionOrNull()?.message
-                _loginEvent.emit(LoginEvent.Error(result.exceptionOrNull()?.message))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _loginEvent.emit(
+                    LoginEvent.Error(
+                        e.message ?: "Error inesperado al iniciar sesión"
+                    )
+                )
+            } finally {
+                _uiState.update {
+                    it.copy(isLoading = false)
+                }
             }
-
-            _isLoading.value = false // ✅ Termina loader
         }
     }
 
     fun loginWithGoogle(credential: AuthCredential) {
+        if (_uiState.value.isLoading) {
+            return
+        }
+
+        _uiState.update {
+            it.copy(isLoading = true)
+        }
+
         viewModelScope.launch {
-            _isLoading.value = true
-            val result = loginWithGoogleUseCase(credential)
-            if (result.isSuccess) {
-                saveRememberMeUseCase(true)
-                val authUser = result.getOrNull()
-                if (authUser != null) {
-                    val userName = authUser.displayName ?: "Usuario"
-                    _loginEvent.emit(
-                        LoginEvent.Success(
-                            user = UserProfile(
-                                uid = authUser.uid,
-                                name = userName,
-                                email = authUser.email
+            try {
+                val result = loginWithGoogleUseCase(credential)
+
+                if (result.isSuccess) {
+                    saveRememberMeUseCase(true)
+
+                    val authUser = result.getOrNull()
+
+                    if (result.isSuccess) {
+                        saveRememberMeUseCase(true)
+
+                        _loginEvent.emit(LoginEvent.Success)
+                    } else {
+                        _loginEvent.emit(
+                            LoginEvent.Error(
+                                result.exceptionOrNull()?.message
+                                    ?: "No se pudo iniciar sesión con Google"
                             )
                         )
-                    )
+                    }
                 } else {
-                    _loginEvent.emit(LoginEvent.Error("Error al obtener datos del usuario"))
+                    _loginEvent.emit(
+                        LoginEvent.Error(
+                            result.exceptionOrNull()?.message
+                                ?: "No se pudo iniciar sesión con Google"
+                        )
+                    )
                 }
-            } else {
-                _error.value = result.exceptionOrNull()?.message
-                _loginEvent.emit(LoginEvent.Error(result.exceptionOrNull()?.message))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _loginEvent.emit(
+                    LoginEvent.Error(
+                        e.message ?: "Error inesperado al iniciar sesión con Google"
+                    )
+                )
+            } finally {
+                _uiState.update {
+                    it.copy(isLoading = false)
+                }
             }
-
-            _isLoading.value = false
         }
     }
 
-    fun onEmailChanged(newEmail: String) {
-        _email.value = newEmail
-    }
-
-    fun onPasswordChanged(newPassword: String) {
-        _password.value = newPassword
-    }
-
-    fun onRememberMeChanged(newValue: Boolean) {
-        _rememberMe.value = newValue
+    private fun emitError(message: String) {
+        viewModelScope.launch {
+            _loginEvent.emit(
+                LoginEvent.Error(message)
+            )
+        }
     }
 }
 
+data class LoginUiState(
+    val email: String = "",
+    val password: String = "",
+    val rememberMe: Boolean = false,
+    val isLoading: Boolean = false
+)
+
 sealed class LoginEvent {
-    data class Success(val user: UserProfile) : LoginEvent()
-    data class Error(val message: String?) : LoginEvent()
+    data object Success : LoginEvent()
+
+    data class Error(
+        val message: String?
+    ) : LoginEvent()
 }

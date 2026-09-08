@@ -8,7 +8,7 @@ class LogoutUseCase @Inject constructor(
     private val clearSessionUseCase: ClearSessionUseCase
 ) {
     suspend operator fun invoke() {
-        authRepository.logout()      // Firebase
-        clearSessionUseCase()        // DataStore (rememberMe = false)
+        authRepository.logout()
+        clearSessionUseCase()
     }
 }

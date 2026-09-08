@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "821849863764-6ra9j43d7ddemvu048lom13hjr8bh59l.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rafario.lahrecetah",
+            "certificate_hash": "13bfb689f9e2a36034d83ded274ecf3cee08f8c2"
+          }
+        },
+        {
+          "client_id": "821849863764-he3agf0tnp4t67frdcbon56htettcb9s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rafario.lahrecetah",
+            "certificate_hash": "37e4d19c9e07914a3878d7b10dcc7ef89b1548b1"
+          }
+        },
+        {
           "client_id": "821849863764-5b90fka638db5vupdl0ob46mk0isjctl.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,6 +45,13 @@
             {
               "client_id": "821849863764-5b90fka638db5vupdl0ob46mk0isjctl.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "821849863764-8agrpm89jq95an7tnpj3iqv5lo6oe91l.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.rafario.LahRecetah-ios"
+              }
             }
           ]
         }

@@ -70,15 +70,17 @@ class FirebaseAuthDataSource @Inject constructor(
                         .build()
 
                     user.updateProfile(profileUpdates)
-                        .continueWithTask {
-                            user.sendEmailVerification()
-                        }
                         .addOnSuccessListener {
-                            firebaseAuth.signOut()
-                            cont.resume(Result.success(uid)) // 👈 clave
+                            user.sendEmailVerification()
+                                .addOnSuccessListener {
+                                    cont.resume(Result.success(uid))
+                                }
+                                .addOnFailureListener { error ->
+                                    cont.resume(Result.failure(error))
+                                }
                         }
-                        .addOnFailureListener {
-                            cont.resume(Result.failure(it))
+                        .addOnFailureListener { error ->
+                            cont.resume(Result.failure(error))
                         }
                 }
                 .addOnFailureListener {

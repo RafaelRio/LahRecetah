@@ -1,359 +1,496 @@
 package com.rafario.lahrecetah.ui.add_recipe
 
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.storage.FirebaseStorage
 import com.rafario.lahrecetah.data.repository.RecipeRepository
 import com.rafario.lahrecetah.domain.model.Recipe
 import com.rafario.lahrecetah.domain.model.RecipeCategory
 import com.rafario.lahrecetah.domain.usecase.recipes.CreateRecipeUseCase
+import com.rafario.lahrecetah.domain.validation.RecipeFormValidator
+import com.rafario.lahrecetah.domain.validation.RecipeValidationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
-
 
 @HiltViewModel
 class AddRecipeViewModel @Inject constructor(
     private val createRecipeUseCase: CreateRecipeUseCase,
-    private val recipeRepository: RecipeRepository,
-    private val storage: FirebaseStorage,
+    private val recipeRepository: RecipeRepository
 ) : ViewModel() {
 
-    // ✅ NUEVO: modo edición
-    private val _isEditMode = MutableStateFlow(false)
-    val isEditMode = _isEditMode.asStateFlow()
-    private val _editingRecipeId = MutableStateFlow<String?>(null)
-
-    private val _title = MutableStateFlow("")
-    val title = _title.asStateFlow()
-
-    private val _description = MutableStateFlow("")
-    val description = _description.asStateFlow()
-
-    private val _ingredients = MutableStateFlow<List<String>>(emptyList())
-    val ingredients = _ingredients.asStateFlow()
-
-    private val _steps = MutableStateFlow<List<String>>(emptyList())
-    val steps = _steps.asStateFlow()
+    private val _uiState = MutableStateFlow(AddRecipeUiState())
+    val uiState = _uiState.asStateFlow()
 
     private val _uiEvent = MutableSharedFlow<AddRecipeEvent>()
     val uiEvent = _uiEvent.asSharedFlow()
 
-    private val _category = MutableStateFlow(RecipeCategory.OTHER)
-    val category = _category.asStateFlow()
-
-    private val _durationText = MutableStateFlow("")
-    val durationText = _durationText.asStateFlow()
-
-    private val _localImageUri = MutableStateFlow<String?>(null)
-    val localImageUri = _localImageUri.asStateFlow()
-
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading = _isLoading.asStateFlow()
-
-    private val _focusedIngredientIndex = MutableStateFlow<Int?>(null)
-    val focusedIngredientIndex = _focusedIngredientIndex.asStateFlow()
-
-    private val _focusedStepIndex = MutableStateFlow<Int?>(null)
-    val focusedStepIndex = _focusedStepIndex.asStateFlow()
-
-    private val _difficulty = MutableStateFlow(3)
-    val difficulty = _difficulty.asStateFlow()
+    private var editLoadJob: Job? = null
 
     fun onImageSelected(uri: Uri) {
-        _localImageUri.value = uri.toString()
+        _uiState.update {
+            it.copy(localImageUri = uri.toString())
+        }
     }
 
-    fun onDurationChanged(value: String) {
-        _durationText.value = value
+    fun removeImage() {
+        _uiState.update {
+            it.copy(localImageUri = null)
+        }
     }
 
     fun onTitleChanged(value: String) {
-        _title.value = value
+        _uiState.update {
+            it.copy(title = value)
+        }
     }
 
     fun onDescriptionChanged(value: String) {
-        _description.value = value
+        _uiState.update {
+            it.copy(description = value)
+        }
+    }
+
+    fun onDurationChanged(value: String) {
+        _uiState.update {
+            it.copy(durationText = value)
+        }
     }
 
     fun onCategoryChanged(value: RecipeCategory) {
-        _category.value = value
+        _uiState.update {
+            it.copy(category = value)
+        }
     }
 
     fun onDifficultyChanged(value: Int) {
-        _difficulty.value = value.coerceIn(1, 5)
+        _uiState.update {
+            it.copy(difficulty = value.coerceIn(1, 5))
+        }
     }
 
     fun addIngredientRow() {
-        _ingredients.value += ""
-        _focusedIngredientIndex.value = _ingredients.value.lastIndex
+        _uiState.update { state ->
+            val updatedIngredients = state.ingredients + ""
+
+            state.copy(
+                ingredients = updatedIngredients,
+                focusedIngredientIndex = updatedIngredients.lastIndex
+            )
+        }
     }
 
     fun updateIngredient(index: Int, value: String) {
-        _ingredients.value = _ingredients.value.toMutableList().also { list ->
-            if (index in list.indices) list[index] = value
+        _uiState.update { state ->
+            if (index !in state.ingredients.indices) {
+                return@update state
+            }
+
+            val updatedIngredients = state.ingredients.toMutableList().apply {
+                this[index] = value
+            }
+
+            state.copy(ingredients = updatedIngredients)
         }
     }
 
     fun removeIngredient(index: Int) {
-        _ingredients.value = _ingredients.value.toMutableList().also { list ->
-            if (index in list.indices) list.removeAt(index)
+        _uiState.update { state ->
+            if (index !in state.ingredients.indices) {
+                return@update state
+            }
+
+            val updatedIngredients = state.ingredients.toMutableList().apply {
+                removeAt(index)
+            }
+
+            state.copy(
+                ingredients = updatedIngredients,
+                focusedIngredientIndex = null
+            )
+        }
+    }
+
+    fun clearIngredientFocus() {
+        _uiState.update {
+            it.copy(focusedIngredientIndex = null)
         }
     }
 
     fun addStepRow() {
-        _steps.value += ""
-        _focusedStepIndex.value = _steps.value.lastIndex
+        _uiState.update { state ->
+            val updatedSteps = state.steps + ""
+
+            state.copy(
+                steps = updatedSteps,
+                focusedStepIndex = updatedSteps.lastIndex
+            )
+        }
     }
 
     fun updateStep(index: Int, value: String) {
-        _steps.value = _steps.value.toMutableList().also { list ->
-            if (index in list.indices) list[index] = value
+        _uiState.update { state ->
+            if (index !in state.steps.indices) {
+                return@update state
+            }
+
+            val updatedSteps = state.steps.toMutableList().apply {
+                this[index] = value
+            }
+
+            state.copy(steps = updatedSteps)
         }
     }
 
     fun removeStep(index: Int) {
-        _steps.value = _steps.value.toMutableList().also { list ->
-            if (index in list.indices) list.removeAt(index)
+        _uiState.update { state ->
+            if (index !in state.steps.indices) {
+                return@update state
+            }
+
+            val updatedSteps = state.steps.toMutableList().apply {
+                removeAt(index)
+            }
+
+            state.copy(
+                steps = updatedSteps,
+                focusedStepIndex = null
+            )
+        }
+    }
+
+    fun clearStepFocus() {
+        _uiState.update {
+            it.copy(focusedStepIndex = null)
         }
     }
 
     fun exitEditingMode() {
-        _isEditMode.value = false
-        _editingRecipeId.value = null
-        // si quieres, NO limpies el form aquí; yo lo dejaría como está
-        // clearForm()
+        editLoadJob?.cancel()
+        editLoadJob = null
+
+        val currentState = _uiState.value
+
+        val wasEditing =
+            currentState.isEditMode ||
+                    currentState.editingRecipeId != null
+
+        if (wasEditing) {
+            _uiState.value = AddRecipeUiState()
+        } else {
+            _uiState.update {
+                it.copy(
+                    isEditMode = false,
+                    editingRecipeId = null,
+                    isEditReady = false,
+                    isLoading = false
+                )
+            }
+        }
     }
 
     fun startEditing(recipeId: String) {
-        // Evita recargas si ya estás editando esa receta
-        if (_editingRecipeId.value == recipeId && _isEditMode.value) return
+        editLoadJob?.cancel()
 
-        _isEditMode.value = true
-        _editingRecipeId.value = recipeId
+        _uiState.value = AddRecipeUiState(
+            isEditMode = true,
+            editingRecipeId = recipeId,
+            isLoading = true
+        )
 
-        viewModelScope.launch {
-            _isLoading.value = true
+        editLoadJob = viewModelScope.launch {
             try {
-                // Carga “one-shot” (puedes hacerlo también con collect si quieres live updates)
-                val recipe = recipeRepository.observeRecipeById(recipeId)
-                    .filterNotNull()
+                val recipe = recipeRepository
+                    .observeRecipeById(recipeId)
                     .first()
 
-                _title.value = recipe.title
-                _description.value = recipe.description
-                _ingredients.value = recipe.ingredients
-                _steps.value = recipe.steps
-                _category.value = recipe.category
-                _durationText.value = recipe.durationMinutes.toString()
-                _difficulty.value = recipe.difficulty.coerceIn(1, 5)
+                if (recipe == null) {
+                    _uiEvent.emit(
+                        AddRecipeEvent.Error(
+                            "La receta ya no existe o no está disponible"
+                        )
+                    )
+                    return@launch
+                }
 
-                // Para previsualizar la imagen existente:
-                _localImageUri.value = recipe.imageUrl.ifBlank { null }
+                _uiState.update { state ->
+                    if (state.editingRecipeId != recipeId) {
+                        return@update state
+                    }
+
+                    state.copy(
+                        title = recipe.title,
+                        description = recipe.description,
+                        ingredients = recipe.ingredients,
+                        steps = recipe.steps,
+                        category = recipe.category,
+                        durationText = recipe.durationMinutes.toString(),
+                        difficulty = recipe.difficulty.coerceIn(1, 5),
+                        localImageUri = recipe.imageUrl.ifBlank { null },
+                        isEditReady = true
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                _uiEvent.emit(AddRecipeEvent.Error(e.message ?: "Error cargando receta"))
+                _uiEvent.emit(
+                    AddRecipeEvent.Error(
+                        e.message ?: "Error cargando receta"
+                    )
+                )
             } finally {
-                _isLoading.value = false
+                _uiState.update { state ->
+                    if (state.editingRecipeId == recipeId) {
+                        state.copy(isLoading = false)
+                    } else {
+                        state
+                    }
+                }
             }
         }
     }
 
     fun saveEdits() {
-        val recipeId = _editingRecipeId.value ?: run {
-            viewModelScope.launch { _uiEvent.emit(AddRecipeEvent.Error("No se encontró la receta a editar")) }
+        val state = _uiState.value
+
+        if (state.isLoading) {
             return
         }
 
-        viewModelScope.launch {
-            if (_isLoading.value) return@launch
-            _isLoading.value = true
-            try {
-                // ✅ Validaciones (reuso de las tuyas)
-                if (_title.value.isBlank()) {
-                    _uiEvent.emit(AddRecipeEvent.Error("El título es obligatorio"))
-                    return@launch
-                }
-                if (_ingredients.value.isEmpty() || _ingredients.value.all { it.isBlank() }) {
-                    _uiEvent.emit(AddRecipeEvent.Error("Añade al menos un ingrediente"))
-                    return@launch
-                }
-                if (_steps.value.isEmpty() || _steps.value.all { it.isBlank() }) {
-                    _uiEvent.emit(AddRecipeEvent.Error("Añade al menos un paso"))
-                    return@launch
-                }
+        if (!state.isEditReady) {
+            emitError("La receta no está disponible para editar")
+            return
+        }
 
-                // ✅ Imagen: si ya es URL remota, se queda tal cual. Si es local, se sube.
-                val finalImageUrl = when (val uriStr = _localImageUri.value) {
-                    null -> "" // o mantener anterior si prefieres (aquí lo interpretamos como “sin imagen”)
-                    else -> {
-                        if (uriStr.startsWith("http")) uriStr
-                        else uploadRecipeImage(Uri.parse(uriStr))
+        val recipeId = state.editingRecipeId
+
+        if (recipeId == null) {
+            emitError("No se encontró la receta a editar")
+            return
+        }
+
+        _uiState.update {
+            it.copy(isLoading = true)
+        }
+
+        viewModelScope.launch {
+            try {
+                val validation = RecipeFormValidator.validate(
+                    title = state.title,
+                    description = state.description,
+                    ingredients = state.ingredients,
+                    steps = state.steps,
+                    durationText = state.durationText,
+                    difficulty = state.difficulty
+                )
+
+                val durationMinutes = when (validation) {
+                    is RecipeValidationResult.Invalid -> {
+                        _uiEvent.emit(
+                            AddRecipeEvent.Error(validation.message)
+                        )
+                        return@launch
+                    }
+
+                    is RecipeValidationResult.Valid -> {
+                        validation.durationMinutes
                     }
                 }
 
-                val updated = com.rafario.lahrecetah.domain.model.Recipe(
+                val finalImageUrl = when (val uriString = state.localImageUri) {
+                    null -> ""
+
+                    else -> {
+                        if (uriString.startsWith("http")) {
+                            uriString
+                        } else {
+                            recipeRepository.uploadRecipeImage(
+                                uriString.toUri()
+                            )
+                        }
+                    }
+                }
+
+                val updatedRecipe = Recipe(
                     id = recipeId,
-                    title = _title.value.trim(),
-                    description = _description.value.trim(),
-                    ingredients = _ingredients.value.filter { it.isNotBlank() },
-                    steps = _steps.value.filter { it.isNotBlank() },
-                    durationMinutes = _durationText.value.toIntOrNull() ?: 0,
-                    category = _category.value,
-                    difficulty = _difficulty.value,
+                    title = state.title.trim(),
+                    description = state.description.trim(),
+                    ingredients = state.ingredients.filter { it.isNotBlank() },
+                    steps = state.steps.filter { it.isNotBlank() },
+                    durationMinutes = durationMinutes,
+                    category = state.category,
+                    difficulty = state.difficulty,
                     imageUrl = finalImageUrl
                 )
 
-                val result = recipeRepository.updateRecipe(updated)
+                val result = recipeRepository.updateRecipe(updatedRecipe)
+
                 if (result.isSuccess) {
-                    clearForm()
                     exitEditingMode()
-                    _uiEvent.emit(AddRecipeEvent.Success)
+                    _uiEvent.emit(AddRecipeEvent.Updated)
                 } else {
-                    _uiEvent.emit(AddRecipeEvent.Error(result.exceptionOrNull()?.message ?: "Error actualizando receta"))
+                    _uiEvent.emit(
+                        AddRecipeEvent.Error(
+                            result.exceptionOrNull()?.message
+                                ?: "Error actualizando receta"
+                        )
+                    )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                _uiEvent.emit(AddRecipeEvent.Error(e.message ?: "Error inesperado"))
+                _uiEvent.emit(
+                    AddRecipeEvent.Error(
+                        e.message ?: "Error inesperado"
+                    )
+                )
             } finally {
-                _isLoading.value = false
+                _uiState.update {
+                    it.copy(isLoading = false)
+                }
             }
         }
     }
 
     fun createRecipe() {
+        val state = _uiState.value
+
+        if (state.isLoading) {
+            return
+        }
+
+        _uiState.update {
+            it.copy(isLoading = true)
+        }
+
         viewModelScope.launch {
-            if (_isLoading.value) return@launch
-
-            _isLoading.value = true
             try {
-                if (_title.value.isBlank()) {
-                    _uiEvent.emit(AddRecipeEvent.Error("El título es obligatorio"))
-                    return@launch
+                val validation = RecipeFormValidator.validate(
+                    title = state.title,
+                    description = state.description,
+                    ingredients = state.ingredients,
+                    steps = state.steps,
+                    durationText = state.durationText,
+                    difficulty = state.difficulty
+                )
+
+                val durationMinutes = when (validation) {
+                    is RecipeValidationResult.Invalid -> {
+                        _uiEvent.emit(
+                            AddRecipeEvent.Error(validation.message)
+                        )
+                        return@launch
+                    }
+
+                    is RecipeValidationResult.Valid -> {
+                        validation.durationMinutes
+                    }
                 }
 
-                if (_ingredients.value.isEmpty() || _ingredients.value.all { it.isBlank() }) {
-                    _uiEvent.emit(AddRecipeEvent.Error("Añade al menos un ingrediente"))
-                    return@launch
-                }
+                val imageUrl = when (val uriString = state.localImageUri) {
+                    null -> ""
 
-                if (_steps.value.isEmpty() || _steps.value.all { it.isBlank() }) {
-                    _uiEvent.emit(AddRecipeEvent.Error("Añade al menos un paso"))
-                    return@launch
+                    else -> {
+                        if (uriString.startsWith("http")) {
+                            uriString
+                        } else {
+                            recipeRepository.uploadRecipeImage(
+                                uriString.toUri()
+                            )
+                        }
+                    }
                 }
-
-                val imageUrl = _localImageUri.value?.let { uriStr ->
-                    uploadRecipeImage(Uri.parse(uriStr))
-                } ?: ""
 
                 val result = createRecipeUseCase(
-                    title = _title.value,
-                    description = _description.value,
-                    ingredients = _ingredients.value.filter { it.isNotBlank() },
-                    steps = _steps.value.filter { it.isNotBlank() },
-                    category = _category.value,
-                    durationMinutes = _durationText.value.toIntOrNull() ?: 0,
-                    difficulty = _difficulty.value,
+                    title = state.title.trim(),
+                    description = state.description.trim(),
+                    ingredients = state.ingredients.filter { it.isNotBlank() },
+                    steps = state.steps.filter { it.isNotBlank() },
+                    category = state.category,
+                    durationMinutes = durationMinutes,
+                    difficulty = state.difficulty,
                     imageUrl = imageUrl
                 )
 
                 if (result.isSuccess) {
                     clearForm()
-                    _uiEvent.emit(AddRecipeEvent.Success)
+                    _uiEvent.emit(AddRecipeEvent.Created)
                 } else {
                     _uiEvent.emit(
                         AddRecipeEvent.Error(
-                            result.exceptionOrNull()?.message ?: "Error desconocido"
+                            result.exceptionOrNull()?.message
+                                ?: "Error desconocido"
                         )
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                _uiEvent.emit(AddRecipeEvent.Error(e.message ?: "Error inesperado"))
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-
-    fun createMockRecipe() {
-        viewModelScope.launch {
-            if (_isLoading.value) return@launch
-
-            _isLoading.value = true
-            try {
-
-                val result = createRecipeUseCase(
-                    title = "Mock",
-                    description = "Mock descripcion",
-                    ingredients = listOf(
-                        "ingrediente mock1",
-                        "ingrediente mock2",
-                        "ingrediente mock3"
-                    ),
-                    steps = listOf("paso mock1", "paso mock2", "paso mock3"),
-                    category = RecipeCategory.DESSERT,
-                    durationMinutes = 100,
-                    difficulty = 2,
-                    imageUrl = "https://firebasestorage.googleapis.com/v0/b/lahrecetah.firebasestorage.app/o/recipes%2F836a1514-c0a4-4dc5-ad46-3f99701bf5be.jpg?alt=media&token=8ae4c4e0-ca9d-4992-ab2a-007a1f88145d"
+                _uiEvent.emit(
+                    AddRecipeEvent.Error(
+                        e.message ?: "Error inesperado"
+                    )
                 )
-
-                if (result.isSuccess) {
-                    clearForm()
-                    _uiEvent.emit(AddRecipeEvent.Success)
-                } else {
-                    _uiEvent.emit(
-                        AddRecipeEvent.Error(
-                            result.exceptionOrNull()?.message ?: "Error desconocido"
-                        )
-                    )
-                }
-            } catch (e: Exception) {
-                _uiEvent.emit(AddRecipeEvent.Error(e.message ?: "Error inesperado"))
             } finally {
-                _isLoading.value = false
+                _uiState.update {
+                    it.copy(isLoading = false)
+                }
             }
         }
     }
-
 
     private fun clearForm() {
-        _title.value = ""
-        _description.value = ""
-        _ingredients.value = emptyList()
-        _steps.value = emptyList()
-        _category.value = RecipeCategory.OTHER
-        _durationText.value = ""
-        _difficulty.value = 3
-        _localImageUri.value = null
+        _uiState.update { state ->
+            state.copy(
+                title = "",
+                description = "",
+                durationText = "",
+                ingredients = emptyList(),
+                steps = emptyList(),
+                difficulty = 3,
+                category = RecipeCategory.OTHER,
+                localImageUri = null,
+                focusedIngredientIndex = null,
+                focusedStepIndex = null
+            )
+        }
     }
 
-    private suspend fun uploadRecipeImage(uri: Uri): String {
-        val ref = storage.reference.child("recipes").child("${java.util.UUID.randomUUID()}.jpg")
-        ref.putFile(uri).await()
-        return ref.downloadUrl.await().toString()
-    }
-
-    fun removeImage() {
-        _localImageUri.value = null
-    }
-
-    fun clearIngredientFocus() {
-        _focusedIngredientIndex.value = null
-    }
-
-    fun clearStepFocus() {
-        _focusedStepIndex.value = null
+    private fun emitError(message: String) {
+        viewModelScope.launch {
+            _uiEvent.emit(AddRecipeEvent.Error(message))
+        }
     }
 }
 
 sealed class AddRecipeEvent {
-    object Success : AddRecipeEvent()
+    data object Created : AddRecipeEvent()
+    data object Updated : AddRecipeEvent()
     data class Error(val message: String?) : AddRecipeEvent()
 }
+
+data class AddRecipeUiState(
+    val title: String = "",
+    val description: String = "",
+    val durationText: String = "",
+    val ingredients: List<String> = emptyList(),
+    val steps: List<String> = emptyList(),
+    val difficulty: Int = 3,
+    val category: RecipeCategory = RecipeCategory.OTHER,
+    val localImageUri: String? = null,
+    val isLoading: Boolean = false,
+    val isEditMode: Boolean = false,
+    val editingRecipeId: String? = null,
+    val isEditReady: Boolean = false,
+    val focusedIngredientIndex: Int? = null,
+    val focusedStepIndex: Int? = null
+)

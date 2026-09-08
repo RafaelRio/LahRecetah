@@ -1,6 +1,7 @@
 package com.rafario.lahrecetah.ui.add_recipe
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -46,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,42 +76,56 @@ import java.io.File
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddRecipeScreen(
-    navHostController: NavHostController,
     modifier: Modifier = Modifier,
-    editingRecipeId: String?,          // ✅ NUEVO
+    editingRecipeId: String?,
     onEditFinished: () -> Unit,
     viewModel: AddRecipeViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
-    val isEditMode by viewModel.isEditMode.collectAsStateWithLifecycle()
 
-    val title by viewModel.title.collectAsStateWithLifecycle()
-    val description by viewModel.description.collectAsStateWithLifecycle()
-    val durationText by viewModel.durationText.collectAsStateWithLifecycle()
-    val ingredients by viewModel.ingredients.collectAsStateWithLifecycle()
-    val steps by viewModel.steps.collectAsStateWithLifecycle()
-    val difficulty by viewModel.difficulty.collectAsStateWithLifecycle()
-    val category by viewModel.category.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
-    val localImageUri by viewModel.localImageUri.collectAsStateWithLifecycle()
-    var showImagePickerSheet by remember { mutableStateOf(false) }
-    val focusedIngredientIndex by viewModel.focusedIngredientIndex.collectAsStateWithLifecycle()
-    val focusedStepIndex by viewModel.focusedStepIndex.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    var showImagePickerSheet by remember {
+        mutableStateOf(false)
+    }
+
     val cropLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result: ActivityResult ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val resultUri = UCrop.getOutput(result.data!!)
-            if (resultUri != null) {
-                viewModel.onImageSelected(resultUri)
+        val data = result.data
+
+        when (result.resultCode) {
+            Activity.RESULT_OK -> {
+                val resultUri = data?.let {
+                    UCrop.getOutput(it)
+                }
+
+                if (resultUri != null) {
+                    viewModel.onImageSelected(resultUri)
+                } else {
+                    Toast.makeText(
+                        context,
+                        "No se pudo obtener la imagen recortada",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
-        } else if (result.resultCode == UCrop.RESULT_ERROR) {
-            val error = UCrop.getError(result.data!!)
-            Toast.makeText(context, error?.message ?: "Error recortando imagen", Toast.LENGTH_SHORT)
-                .show()
+
+            UCrop.RESULT_ERROR -> {
+                val error = data?.let {
+                    UCrop.getError(it)
+                }
+
+                Toast.makeText(
+                    context,
+                    error?.message ?: "Error recortando imagen",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
         }
     }
+
     LaunchedEffect(editingRecipeId) {
         if (!editingRecipeId.isNullOrBlank()) {
             viewModel.startEditing(editingRecipeId)
@@ -121,26 +137,47 @@ fun AddRecipeScreen(
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { event ->
             when (event) {
-                is AddRecipeEvent.Success -> {
+                AddRecipeEvent.Created -> {
                     Toast.makeText(
                         context,
-                        if (isEditMode) "Receta actualizada" else "Receta añadida",
+                        "Receta añadida",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+
+                AddRecipeEvent.Updated -> {
+                    Toast.makeText(
+                        context,
+                        "Receta actualizada",
                         Toast.LENGTH_SHORT
                     ).show()
 
-                    if (isEditMode) onEditFinished()
+                    onEditFinished()
                 }
-                is AddRecipeEvent.Error -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+
+                is AddRecipeEvent.Error -> {
+                    Toast.makeText(
+                        context,
+                        event.message ?: "Error inesperado",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         }
     }
 
     fun startCrop(sourceUri: Uri) {
-        val destUri = Uri.fromFile(
-            File(context.cacheDir, "cropped_${System.currentTimeMillis()}.jpg")
+        val destinationUri = Uri.fromFile(
+            File(
+                context.cacheDir,
+                "cropped_${System.currentTimeMillis()}.jpg"
+            )
         )
 
-        val intent = UCrop.of(sourceUri, destUri)
+        val intent = UCrop.of(
+            sourceUri,
+            destinationUri
+        )
             .withAspectRatio(16f, 9f)
             .getIntent(context)
 
@@ -150,63 +187,78 @@ fun AddRecipeScreen(
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
-        if (uri != null) startCrop(uri)
+        if (uri != null) {
+            startCrop(uri)
+        }
     }
 
-    var cameraUri by remember { mutableStateOf<Uri?>(null) }
+    var cameraUri by rememberSaveable {
+        mutableStateOf<Uri?>(null)
+    }
 
     val takePictureLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success) cameraUri?.let { startCrop(it) }
-    }
-
-    val cameraPermissionLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            if (isGranted) {
-                val uri = createImageUri(context)
-                cameraUri = uri
-                takePictureLauncher.launch(uri)
-            } else {
-                Toast.makeText(
-                    context,
-                    "Permiso de cámara denegado",
-                    Toast.LENGTH_SHORT
-                ).show()
+        if (success) {
+            cameraUri?.let {
+                startCrop(it)
             }
         }
+    }
 
+    fun launchCamera() {
+        val uri = createImageUri(context)
+        cameraUri = uri
 
+        try {
+            takePictureLauncher.launch(uri)
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(
+                context,
+                "No se encontró ninguna aplicación de cámara",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            launchCamera()
+        } else {
+            Toast.makeText(
+                context,
+                "Permiso de cámara denegado",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
 
     Box(
-        Modifier
+        modifier = modifier
             .positionAwareImePadding()
             .padding(20.dp)
     ) {
         Column(
-            modifier = Modifier
-
-                .verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.verticalScroll(scrollState),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-
-            /*SectionHeader("Imagen", modifier = Modifier.clickable {
-                viewModel.createMockRecipe()
-            })*/
-
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(140.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .dashedBorder(color = MaterialTheme.colorScheme.primary)
-                    .clickable(enabled = localImageUri.isNullOrBlank()) {
+                    .dashedBorder(
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    .clickable(
+                        enabled = uiState.localImageUri.isNullOrBlank()
+                    ) {
                         showImagePickerSheet = true
                     }
             ) {
-
-                if (localImageUri.isNullOrBlank()) {
+                if (uiState.localImageUri.isNullOrBlank()) {
                     Column(
                         modifier = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -217,28 +269,33 @@ fun AddRecipeScreen(
                             modifier = Modifier.size(36.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(Modifier.height(8.dp))
+
+                        Spacer(
+                            Modifier.height(8.dp)
+                        )
+
                         Text("Añadir imagen")
                     }
                 } else {
-
                     AsyncImage(
-                        model = localImageUri,
+                        model = uiState.localImageUri,
                         contentDescription = "Imagen receta",
                         modifier = Modifier.matchParentSize(),
                         contentScale = ContentScale.Crop
                     )
 
-                    // ❌ Botón eliminar
                     IconButton(
-                        onClick = { viewModel.removeImage() },
+                        onClick = viewModel::removeImage,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(30.dp)
                             .size(20.dp)
                             .clip(RoundedCornerShape(50))
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
-
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(
+                                    alpha = 0.8f
+                                )
+                            )
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -250,15 +307,15 @@ fun AddRecipeScreen(
             }
 
             CustomOutlineTextField(
-                value = title,
-                onValueChange = { viewModel.onTitleChanged(it) },
+                value = uiState.title,
+                onValueChange = viewModel::onTitleChanged,
                 label = "Título de la receta",
                 modifier = Modifier
             )
 
             CustomOutlineTextField(
-                value = description,
-                onValueChange = { viewModel.onDescriptionChanged(it) },
+                value = uiState.description,
+                onValueChange = viewModel::onDescriptionChanged,
                 label = "Descripción de la receta",
                 modifier = Modifier,
                 multiline = true
@@ -270,20 +327,23 @@ fun AddRecipeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 CustomOutlineTextField(
-                    value = durationText,
-                    onValueChange = { viewModel.onDurationChanged(it) },
+                    value = uiState.durationText,
+                    onValueChange = viewModel::onDurationChanged,
                     label = "Duración",
                     modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    )
                 )
 
                 CustomOutlineDropdownField(
                     modifier = Modifier.weight(1f),
-                    value = category,
-                    onValueChange = { viewModel.onCategoryChanged(it) },
+                    value = uiState.category,
+                    onValueChange = viewModel::onCategoryChanged,
                     label = "Categoría",
                     options = RecipeCategory.entries.toList(),
-                    optionLabel = { RecipeCategory.toDisplayName(it) })
+                    optionLabel = RecipeCategory::toDisplayName
+                )
             }
 
             HorizontalDivider()
@@ -293,16 +353,22 @@ fun AddRecipeScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    SectionHeader(title = "Dificultad")
+                    SectionHeader(
+                        title = "Dificultad"
+                    )
+
                     Text(
-                        text = "${difficulty}/5",
+                        text = "${uiState.difficulty}/5",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
+
                 Slider(
-                    value = difficulty.toFloat(),
-                    onValueChange = { viewModel.onDifficultyChanged(it.toInt()) },
+                    value = uiState.difficulty.toFloat(),
+                    onValueChange = {
+                        viewModel.onDifficultyChanged(it.toInt())
+                    },
                     valueRange = 1f..5f,
                     steps = 3,
                     modifier = Modifier.fillMaxWidth()
@@ -311,9 +377,11 @@ fun AddRecipeScreen(
 
             HorizontalDivider()
 
-            SectionHeader(title = "Ingredientes")
+            SectionHeader(
+                title = "Ingredientes"
+            )
 
-            if (ingredients.isEmpty()) {
+            if (uiState.ingredients.isEmpty()) {
                 Text(
                     text = "No has añadido ingredientes",
                     style = MaterialTheme.typography.bodyMedium,
@@ -321,31 +389,46 @@ fun AddRecipeScreen(
                 )
             }
 
-            ingredients.forEachIndexed { index, ingredient ->
+            uiState.ingredients.forEachIndexed { index, ingredient ->
                 DynamicRowItem(
                     text = ingredient,
-                    onTextChange = { viewModel.updateIngredient(index, it) },
-                    onRemove = { viewModel.removeIngredient(index) },
+                    onTextChange = {
+                        viewModel.updateIngredient(index, it)
+                    },
+                    onRemove = {
+                        viewModel.removeIngredient(index)
+                    },
                     placeholder = "Ej. 200g de Harina",
-                    requestFocus = index == focusedIngredientIndex,
-                    onFocusRequested = { viewModel.clearIngredientFocus() }
+                    requestFocus =
+                        index == uiState.focusedIngredientIndex,
+                    onFocusRequested =
+                        viewModel::clearIngredientFocus
                 )
             }
 
             TextButton(
-                onClick = { viewModel.addIngredientRow() },
+                onClick = viewModel::addIngredientRow,
                 modifier = Modifier.align(Alignment.Start)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(Modifier.padding(4.dp))
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null
+                )
+
+                Spacer(
+                    Modifier.padding(4.dp)
+                )
+
                 Text("Añadir Ingrediente")
             }
 
             HorizontalDivider()
 
-            SectionHeader(title = "Pasos de preparación")
+            SectionHeader(
+                title = "Pasos de preparación"
+            )
 
-            if (steps.isEmpty()) {
+            if (uiState.steps.isEmpty()) {
                 Text(
                     text = "No has añadido pasos",
                     style = MaterialTheme.typography.bodyMedium,
@@ -353,77 +436,113 @@ fun AddRecipeScreen(
                 )
             }
 
-            steps.forEachIndexed { index, step ->
+            uiState.steps.forEachIndexed { index, step ->
                 DynamicRowItem(
                     text = step,
-                    onTextChange = { viewModel.updateStep(index, it) },
-                    onRemove = { viewModel.removeStep(index) },
+                    onTextChange = {
+                        viewModel.updateStep(index, it)
+                    },
+                    onRemove = {
+                        viewModel.removeStep(index)
+                    },
                     placeholder = "Ej. Mezclar los huevos...",
                     isTextArea = true,
-                    requestFocus = index == focusedStepIndex,
-                    onFocusRequested = { viewModel.clearStepFocus() }
+                    requestFocus =
+                        index == uiState.focusedStepIndex,
+                    onFocusRequested =
+                        viewModel::clearStepFocus
                 )
             }
 
             TextButton(
-                onClick = { viewModel.addStepRow() }, modifier = Modifier.align(Alignment.Start)
+                onClick = viewModel::addStepRow,
+                modifier = Modifier.align(Alignment.Start)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(Modifier.padding(4.dp))
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null
+                )
+
+                Spacer(
+                    Modifier.padding(4.dp)
+                )
+
                 Text("Añadir Paso")
             }
 
-            Spacer(modifier = Modifier.height(60.dp))
+            Spacer(
+                modifier = Modifier.height(60.dp)
+            )
         }
 
         Button(
-            onClick = { if (isEditMode) viewModel.saveEdits() else viewModel.createRecipe() },
+            onClick = {
+                if (uiState.isEditMode) {
+                    viewModel.saveEdits()
+                } else {
+                    viewModel.createRecipe()
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter),
-            enabled = !isLoading && title.isNotBlank() && description.isNotBlank()
+            enabled =
+                !uiState.isLoading &&
+                        uiState.title.isNotBlank() &&
+                        uiState.description.isNotBlank() &&
+                        (!uiState.isEditMode || uiState.isEditReady)
         ) {
-            if (isLoading) {
+            if (uiState.isLoading) {
                 CircularProgressIndicator(
                     strokeWidth = 2.dp,
                     modifier = Modifier.size(18.dp)
                 )
-                Spacer(Modifier.width(10.dp))
+
+                Spacer(
+                    Modifier.width(10.dp)
+                )
+
                 Text("Guardando…")
             } else {
-                Text(if (isEditMode) "Guardar cambios" else "Guardar receta")
+                Text(
+                    if (uiState.isEditMode) {
+                        "Guardar cambios"
+                    } else {
+                        "Guardar receta"
+                    }
+                )
             }
         }
     }
 
     if (showImagePickerSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showImagePickerSheet = false }
+            onDismissRequest = {
+                showImagePickerSheet = false
+            }
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 24.dp, horizontal = 16.dp),
+                    .padding(
+                        vertical = 24.dp,
+                        horizontal = 16.dp
+                    ),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-
-                // 📷 Cámara
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clickable {
-                            showImagePickerSheet = false
+                    modifier = Modifier.clickable {
+                        showImagePickerSheet = false
 
-                            if (hasCameraPermission(context)) {
-                                val uri = createImageUri(context)
-                                cameraUri = uri
-                                takePictureLauncher.launch(uri)
-                            } else {
-                                cameraPermissionLauncher.launch(
-                                    android.Manifest.permission.CAMERA
-                                )
-                            }
+                        if (hasCameraPermission(context)) {
+                            launchCamera()
+                        } else {
+                            cameraPermissionLauncher.launch(
+                                android.Manifest.permission.CAMERA
+                            )
                         }
+                    }
                 ) {
                     Icon(
                         imageVector = Icons.Default.CameraAlt,
@@ -431,18 +550,20 @@ fun AddRecipeScreen(
                         modifier = Modifier.size(36.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(Modifier.height(8.dp))
+
+                    Spacer(
+                        Modifier.height(8.dp)
+                    )
+
                     Text("Cámara")
                 }
 
-                // 🖼️ Galería
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clickable {
-                            showImagePickerSheet = false
-                            pickImageLauncher.launch("image/*")
-                        }
+                    modifier = Modifier.clickable {
+                        showImagePickerSheet = false
+                        pickImageLauncher.launch("image/*")
+                    }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Image,
@@ -450,17 +571,23 @@ fun AddRecipeScreen(
                         modifier = Modifier.size(36.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(Modifier.height(8.dp))
+
+                    Spacer(
+                        Modifier.height(8.dp)
+                    )
+
                     Text("Galería")
                 }
             }
         }
     }
-
 }
 
 @Composable
-fun SectionHeader(title: String, modifier: Modifier = Modifier) {
+fun SectionHeader(
+    title: String,
+    modifier: Modifier = Modifier
+) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleMedium,
@@ -479,7 +606,9 @@ fun DynamicRowItem(
     requestFocus: Boolean = false,
     onFocusRequested: () -> Unit = {}
 ) {
-    val focusRequester = remember { FocusRequester() }
+    val focusRequester = remember {
+        FocusRequester()
+    }
 
     LaunchedEffect(requestFocus) {
         if (requestFocus) {
@@ -492,7 +621,12 @@ fun DynamicRowItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        verticalAlignment = if (isTextArea) Alignment.Top else Alignment.CenterVertically
+        verticalAlignment =
+            if (isTextArea) {
+                Alignment.Top
+            } else {
+                Alignment.CenterVertically
+            }
     ) {
         CustomOutlineTextField(
             value = text,
@@ -500,9 +634,13 @@ fun DynamicRowItem(
             label = placeholder,
             modifier = Modifier
                 .weight(1f)
-                .focusRequester(focusRequester)
+                .focusRequester(focusRequester),
+            multiline = isTextArea
         )
-        IconButton(onClick = onRemove) {
+
+        IconButton(
+            onClick = onRemove
+        ) {
             Icon(
                 imageVector = Icons.Default.Delete,
                 contentDescription = "Eliminar",
@@ -513,7 +651,11 @@ fun DynamicRowItem(
 }
 
 fun createImageUri(context: Context): Uri {
-    val file = File(context.cacheDir, "camera_${System.currentTimeMillis()}.jpg")
+    val file = File(
+        context.cacheDir,
+        "camera_${System.currentTimeMillis()}.jpg"
+    )
+
     return FileProvider.getUriForFile(
         context,
         "${context.packageName}.provider",

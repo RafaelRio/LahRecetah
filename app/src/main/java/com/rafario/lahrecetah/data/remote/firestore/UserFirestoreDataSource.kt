@@ -23,15 +23,12 @@ class UserFirestoreDataSource @Inject constructor(
     }
 
     suspend fun userExists(email: String): Boolean {
-        return try {
-            val document = firestore.collection("users")
-                .document(email)
-                .get()
-                .await()
-            document.exists()
-        } catch (e: Exception) {
-            false
-        }
+        val document = firestore.collection("users")
+            .document(email)
+            .get()
+            .await()
+
+        return document.exists()
     }
 
     suspend fun getUserProfile(email: String): UserProfile? {
