@@ -1,6 +1,6 @@
 package com.rafario.lahrecetah.domain.usecase.users
 
-import com.rafario.lahrecetah.data.repository.AuthRepository
+import com.rafario.lahrecetah.domain.repository.AuthRepository
 import javax.inject.Inject
 
 class LogoutUseCase @Inject constructor(

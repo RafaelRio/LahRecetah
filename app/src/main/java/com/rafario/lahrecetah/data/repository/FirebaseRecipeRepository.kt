@@ -1,25 +1,26 @@
 package com.rafario.lahrecetah.data.repository
 
-import android.net.Uri
+import androidx.core.net.toUri
 import com.google.firebase.storage.FirebaseStorage
 import com.rafario.lahrecetah.data.remote.firestore.RecipeFirestoreDataSource
 import com.rafario.lahrecetah.domain.model.Recipe
+import com.rafario.lahrecetah.domain.repository.RecipeRepository
+import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.tasks.await
-import javax.inject.Inject
-import kotlin.coroutines.cancellation.CancellationException
 
-class RecipeRepository @Inject constructor(
+class FirebaseRecipeRepository @Inject constructor(
     private val dataSource: RecipeFirestoreDataSource,
     private val storage: FirebaseStorage
-) {
+) : RecipeRepository {
 
-    fun observeRecipes(): Flow<List<Recipe>> {
+    override fun observeRecipes(): Flow<List<Recipe>> {
         return dataSource.observeRecipes()
     }
 
-    suspend fun createRecipe(recipe: Recipe): Result<Unit> {
+    override suspend fun createRecipe(recipe: Recipe): Result<Unit> {
         return try {
             dataSource.createRecipe(recipe)
             Result.success(Unit)
@@ -30,7 +31,7 @@ class RecipeRepository @Inject constructor(
         }
     }
 
-    suspend fun deleteRecipe(recipeId: String): Result<Unit> {
+    override suspend fun deleteRecipe(recipeId: String): Result<Unit> {
         return try {
             val recipe = dataSource
                 .observeRecipeById(recipeId)
@@ -52,7 +53,7 @@ class RecipeRepository @Inject constructor(
         }
     }
 
-    suspend fun updateRecipe(recipe: Recipe): Result<Unit> {
+    override suspend fun updateRecipe(recipe: Recipe): Result<Unit> {
         return try {
             val currentRecipe = dataSource
                 .observeRecipeById(recipe.id)
@@ -78,11 +79,11 @@ class RecipeRepository @Inject constructor(
         }
     }
 
-    fun observeRecipeById(recipeId: String): Flow<Recipe?> {
+    override fun observeRecipeById(recipeId: String): Flow<Recipe?> {
         return dataSource.observeRecipeById(recipeId)
     }
 
-    fun observeRecipesByUser(uid: String): Flow<List<Recipe>> {
+    override fun observeRecipesByUser(uid: String): Flow<List<Recipe>> {
         return dataSource.observeRecipesByUser(uid)
     }
 
@@ -100,12 +101,12 @@ class RecipeRepository @Inject constructor(
         }
     }
 
-    suspend fun uploadRecipeImage(uri: Uri): String {
+    override suspend fun uploadRecipeImage(uri: String): String {
         val reference = storage.reference
             .child("recipes")
             .child("${java.util.UUID.randomUUID()}.jpg")
 
-        reference.putFile(uri).await()
+        reference.putFile(uri.toUri()).await()
 
         return reference.downloadUrl
             .await()

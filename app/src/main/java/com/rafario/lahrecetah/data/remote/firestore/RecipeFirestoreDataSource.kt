@@ -3,13 +3,13 @@ package com.rafario.lahrecetah.data.remote.firestore
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.rafario.lahrecetah.domain.mappers.toRecipe
+import com.rafario.lahrecetah.data.mappers.toRecipe
 import com.rafario.lahrecetah.domain.model.Recipe
+import javax.inject.Inject
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
-import javax.inject.Inject
 
 class RecipeFirestoreDataSource @Inject constructor(
     private val firestore: FirebaseFirestore

@@ -1,23 +1,22 @@
 package com.rafario.lahrecetah.domain.usecase.users
 
-import com.google.firebase.auth.AuthCredential
-import com.rafario.lahrecetah.data.repository.AuthRepository
-import com.rafario.lahrecetah.data.repository.UserFirestoreRepository
 import com.rafario.lahrecetah.domain.model.AuthUser
 import com.rafario.lahrecetah.domain.model.UserProfile
+import com.rafario.lahrecetah.domain.repository.AuthRepository
+import com.rafario.lahrecetah.domain.repository.UserRepository
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 
 class GoogleLoginUseCase @Inject constructor(
     private val authRepository: AuthRepository,
-    private val firestoreRepository: UserFirestoreRepository
+    private val userRepository: UserRepository
 ) {
-    suspend operator fun invoke(credential: AuthCredential): Result<AuthUser> {
+    suspend operator fun invoke(idToken: String): Result<AuthUser> {
         return try {
-            val authUser = authRepository.loginWithGoogle(credential).getOrThrow()
+            val authUser = authRepository.loginWithGoogle(idToken).getOrThrow()
 
             // Verificar si el usuario ya existe en Firestore
-            val userExists = firestoreRepository.userExists(authUser.email)
+            val userExists = userRepository.userExists(authUser.email)
 
             // Si es la primera vez que inicia sesión con Google, crear su perfil
             if (!userExists) {
@@ -26,7 +25,7 @@ class GoogleLoginUseCase @Inject constructor(
                     name = authUser.displayName ?: "Usuario Google",
                     email = authUser.email
                 )
-                firestoreRepository.createUserProfile(profile)
+                userRepository.createUserProfile(profile)
             }
 
             Result.success(authUser)

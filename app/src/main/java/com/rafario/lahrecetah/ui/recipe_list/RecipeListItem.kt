@@ -19,12 +19,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.capitalize
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.domain.model.Recipe
 import com.rafario.lahrecetah.ui.custom_views.CategoryChip
 import com.rafario.lahrecetah.ui.custom_views.InfoItem
@@ -93,12 +95,12 @@ fun RecipeListItem(
             ) {
                 InfoItem(
                     icon = Icons.Default.Schedule,
-                    text = "${recipe.durationMinutes} min"
+                    text = stringResource(R.string.duration_minutes, recipe.durationMinutes)
                 )
 
                 InfoItem(
                     icon = Icons.Default.Star,
-                    text = "Dificultad ${recipe.difficulty}/5"
+                    text = stringResource(R.string.recipe_difficulty, recipe.difficulty)
                 )
 
                 InfoItem(

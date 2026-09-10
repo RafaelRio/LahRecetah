@@ -1,16 +1,17 @@
 package com.rafario.lahrecetah.ui.add_recipe
 
 import android.net.Uri
-import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.rafario.lahrecetah.data.repository.RecipeRepository
 import com.rafario.lahrecetah.domain.model.Recipe
 import com.rafario.lahrecetah.domain.model.RecipeCategory
+import com.rafario.lahrecetah.domain.model.normalized
+import com.rafario.lahrecetah.domain.repository.RecipeRepository
 import com.rafario.lahrecetah.domain.usecase.recipes.CreateRecipeUseCase
 import com.rafario.lahrecetah.domain.validation.RecipeFormValidator
 import com.rafario.lahrecetah.domain.validation.RecipeValidationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -20,7 +21,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @HiltViewModel
 class AddRecipeViewModel @Inject constructor(
@@ -314,7 +314,7 @@ class AddRecipeViewModel @Inject constructor(
                             uriString
                         } else {
                             recipeRepository.uploadRecipeImage(
-                                uriString.toUri()
+                                uriString
                             )
                         }
                     }
@@ -322,17 +322,20 @@ class AddRecipeViewModel @Inject constructor(
 
                 val updatedRecipe = Recipe(
                     id = recipeId,
-                    title = state.title.trim(),
-                    description = state.description.trim(),
-                    ingredients = state.ingredients.filter { it.isNotBlank() },
-                    steps = state.steps.filter { it.isNotBlank() },
+                    title = state.title,
+                    description = state.description,
+                    ingredients = state.ingredients,
+                    steps = state.steps,
                     durationMinutes = durationMinutes,
                     category = state.category,
                     difficulty = state.difficulty,
                     imageUrl = finalImageUrl
-                )
+                ).normalized()
 
                 val result = recipeRepository.updateRecipe(updatedRecipe)
+
+                val failure = result.exceptionOrNull()
+                if (failure is CancellationException) throw failure
 
                 if (result.isSuccess) {
                     exitEditingMode()
@@ -404,22 +407,25 @@ class AddRecipeViewModel @Inject constructor(
                             uriString
                         } else {
                             recipeRepository.uploadRecipeImage(
-                                uriString.toUri()
+                                uriString
                             )
                         }
                     }
                 }
 
                 val result = createRecipeUseCase(
-                    title = state.title.trim(),
-                    description = state.description.trim(),
-                    ingredients = state.ingredients.filter { it.isNotBlank() },
-                    steps = state.steps.filter { it.isNotBlank() },
+                    title = state.title,
+                    description = state.description,
+                    ingredients = state.ingredients,
+                    steps = state.steps,
                     category = state.category,
                     durationMinutes = durationMinutes,
                     difficulty = state.difficulty,
                     imageUrl = imageUrl
                 )
+
+                val failure = result.exceptionOrNull()
+                if (failure is CancellationException) throw failure
 
                 if (result.isSuccess) {
                     clearForm()

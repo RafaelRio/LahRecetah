@@ -1,388 +1,122 @@
-# LahRecetah 🍳
-
-Aplicación Android para **crear, descubrir y gestionar recetas de cocina**.
-
-Desarrollada con **Kotlin** y **Jetpack Compose**, utilizando **Firebase** como backend e implementando una arquitectura basada en **MVVM**, separación por capas y casos de uso.
-
-> **Antes de ejecutarla:** esta versión utiliza Firebase como backend. Para configurar Authentication, Firestore, Storage y Google Sign-In en un entorno local, sigue la sección [Configuración de Firebase](#-configuración-de-firebase).
----
-
-## ✨ Funcionalidades
-
-* Registro e inicio de sesión con email y contraseña.
-* Inicio de sesión con Google.
-* Opción de mantener la sesión iniciada.
-* Visualización de recetas publicadas.
-* Consulta del detalle completo de una receta.
-* Creación de recetas propias.
-* Edición de recetas publicadas por el usuario.
-* Eliminación de recetas con confirmación.
-* Gestión de ingredientes y pasos de elaboración.
-* Clasificación de recetas por categoría.
-* Configuración de duración y dificultad.
-* Selección y subida de imágenes.
-* Perfil de usuario.
-* Edición del nombre del perfil.
-* Consulta de las recetas creadas por el usuario.
-* Cierre de sesión.
-
----
-
-## 🛠️ Tecnologías
-
-| Tecnología                  | Uso                                  |
-| --------------------------- | ------------------------------------ |
-| **Kotlin**                  | Lenguaje principal                   |
-| **Jetpack Compose**         | Interfaz de usuario                  |
-| **Material 3**              | Sistema de diseño                    |
-| **MVVM**                    | Arquitectura de presentación         |
-| **Coroutines / Flow**       | Gestión asíncrona y reactiva         |
-| **Hilt**                    | Inyección de dependencias            |
-| **Navigation Compose**      | Navegación                           |
-| **Firebase Authentication** | Autenticación de usuarios            |
-| **Google Sign-In**          | Inicio de sesión con Google          |
-| **Cloud Firestore**         | Almacenamiento de recetas y usuarios |
-| **Firebase Storage**        | Almacenamiento de imágenes           |
-| **DataStore**               | Preferencias de sesión               |
-| **Coil**                    | Carga de imágenes                    |
-| **Gradle Kotlin DSL**       | Configuración del proyecto           |
-
----
-
-## 🧱 Arquitectura
-
-El proyecto separa las responsabilidades en diferentes capas:
-
-```text
-com.rafario.lahrecetah
-│
-├── data/
-│   ├── local/
-│   ├── remote/
-│   └── repository/
-│
-├── domain/
-│   ├── mappers/
-│   ├── model/
-│   └── usecase/
-│
-├── di/
-│
-├── navigation/
-│
-├── ui/
-│   ├── splash/
-│   ├── login/
-│   ├── register/
-│   ├── main/
-│   ├── recipe_list/
-│   ├── recipe_detail/
-│   ├── add_recipe/
-│   ├── profile/
-│   ├── custom_views/
-│   └── theme/
-│
-└── MainActivity.kt
-```
-
-### Data
-
-Gestiona las fuentes de datos de la aplicación:
-
-* Firebase Authentication.
-* Cloud Firestore.
-* Firebase Storage.
-* DataStore.
-* Repositories.
-
-### Domain
-
-Contiene la lógica de negocio independiente de la interfaz:
-
-* Modelos de dominio.
-* Mappers.
-* Casos de uso para recetas y usuarios.
-
-### UI
-
-Contiene las pantallas y `ViewModel` desarrollados con Jetpack Compose.
-
----
-
-## 🔐 Autenticación
-
-La aplicación utiliza **Firebase Authentication**.
-
-Permite iniciar sesión mediante:
-
-* Email y contraseña.
-* Cuenta de Google.
-
-También incluye registro de nuevos usuarios, cierre de sesión y gestión de la sesión actual.
-
-La preferencia de mantener la sesión iniciada se almacena localmente mediante **DataStore**.
-
----
-
-## 🍽️ Gestión de recetas
-
-Cada receta contiene información como:
-
-```kotlin
-data class Recipe(
-    val id: String = "",
-    val title: String = "",
-    val description: String = "",
-    val ingredients: List<String> = emptyList(),
-    val steps: List<String> = emptyList(),
-    val createdByUid: String = "",
-    val createdByName: String = "",
-    val durationMinutes: Int = 0,
-    val category: RecipeCategory = RecipeCategory.OTHER,
-    val difficulty: Int = 1,
-    val imageUrl: String = ""
-)
-```
-
-Las recetas pueden clasificarse como:
-
-* Entrante
-* Primer plato
-* Segundo plato
-* Postre
-* Dulce
-* Ensalada
-* Sopa
-* Bebida
-* Otro
-
----
-
-## ➕ Crear y editar recetas
-
-El formulario permite definir:
-
-* Título.
-* Descripción.
-* Ingredientes.
-* Pasos de elaboración.
-* Categoría.
-* Tiempo de preparación.
-* Dificultad.
-* Imagen.
-
-Los ingredientes y pasos pueden añadirse o eliminarse dinámicamente.
-
-Antes de guardar una receta se realizan diferentes validaciones, como comprobar que exista un título y al menos un ingrediente y un paso.
-
-El mismo flujo permite también **editar recetas existentes**.
-
----
-
-## 🖼️ Imágenes
-
-Las imágenes seleccionadas para las recetas se suben a **Firebase Storage**.
-
-Una vez finalizada la subida, la URL obtenida se almacena junto al resto de información de la receta en Firestore.
-
-Las imágenes remotas se muestran en la interfaz utilizando **Coil**.
-
----
-
-## 🔥 Firebase
-
-Firebase actúa como backend principal de la aplicación:
-
-```text
-Firebase Authentication
-        │
-        ├── Usuarios y sesión
-        │
-Cloud Firestore
-        │
-        ├── Recetas
-        └── Perfiles
-        │
-Firebase Storage
-        │
-        └── Imágenes de recetas
-```
-
-Las recetas se exponen mediante `Flow`, permitiendo que las pantallas reaccionen a los cambios de datos.
-
----
-
-## 👤 Perfil
-
-Desde el perfil el usuario puede:
-
-* Consultar sus datos.
-* Modificar su nombre.
-* Ver todas las recetas que ha publicado.
-* Editar una receta propia.
-* Eliminar una receta.
-* Cerrar sesión.
-
-Las recetas del usuario se recuperan utilizando su `uid` de Firebase Authentication.
-
----
-
-## 🧭 Navegación
-
-La navegación principal utiliza **Navigation Compose**.
-
-```text
-Splash
-  │
-  ├── Login
-  │     └── Register
-  │
-  └── Main
-        │
-        ├── Recetas
-        ├── Añadir receta
-        └── Perfil
-              │
-              └── Editar receta
-
-Recetas
-   │
-   └── Detalle de receta
-```
-
-La pantalla principal utiliza una barra de navegación inferior con tres secciones:
-
-1. Listado de recetas.
-2. Crear receta.
-3. Perfil.
-
----
-
-## 💉 Inyección de dependencias
-
-El proyecto utiliza **Hilt** para gestionar la inyección de dependencias.
-
-Los `ViewModel`, repositories, fuentes de datos y servicios de Firebase se proporcionan mediante DI, reduciendo el acoplamiento entre las diferentes capas de la aplicación.
-
----
-
-## ⚙️ Requisitos
-
-* Android Studio
-* JDK 17 o 21 para ejecutar Gradle (verificado localmente con JDK 17). El destino de bytecode Java/Kotlin está configurado en 11.
-* `minSdk 30`
-* `targetSdk 36`
-* `compileSdk 36`
-* Proyecto Firebase configurado
-
-Servicios Firebase necesarios:
-
-* Authentication
-* Google Sign-In
-* Cloud Firestore
-* Firebase Storage
-
----
-
-## 🚀 Instalación
-
-Clona el repositorio:
-
-```bash
-git clone https://github.com/RafaelRio/LahRecetah.git
-```
-
-Accede al proyecto:
-
-```bash
-cd LahRecetah
-```
-
-Abre el proyecto con **Android Studio**, selecciona un JDK compatible como Gradle JDK y sincroniza Gradle. Para ejecutar comandos en terminal, configura también `JAVA_HOME` con ese JDK.
-
-Antes de probar autenticación y recetas, completa la [configuración de Firebase](#-configuración-de-firebase). El archivo incluido en el repositorio identifica un proyecto Firebase, pero no garantiza acceso a sus servicios ni autoriza nuevas firmas de debug.
-
-Para compilar el APK de debug:
+# LahRecetah
+
+Aplicación Android de recetas con Kotlin y Jetpack Compose. Permite consultar,
+crear, editar y eliminar recetas propias, gestionar el perfil e iniciar sesión
+con email o Google. Las imágenes pueden seleccionarse de la galería o capturarse
+con la cámara y recortarse con uCrop.
+
+## Requisitos
+
+- Android Studio y JDK 17 para Gradle. El bytecode Java/Kotlin utiliza el destino 11.
+- Android SDK 36; la aplicación requiere Android 11 (API 30) o posterior.
+- Un proyecto Firebase con Authentication, Firestore y Storage.
+
+Se mantiene un único módulo Android, `app`.
+
+## Configuración local
+
+1. Clona el repositorio y ábrelo en Android Studio.
+2. Registra en Firebase una aplicación Android con el package
+   `com.rafario.lahrecetah`.
+3. Habilita los proveedores Email/contraseña y Google en Authentication.
+4. Ejecuta `./gradlew :app:signingReport` y registra las huellas SHA-1 y SHA-256
+   de tu certificado en la configuración de la aplicación Firebase.
+5. Crea Firestore y Storage y configura sus reglas e índices para permitir las
+   operaciones correspondientes a cada usuario.
+6. Descarga tu propio `google-services.json` actualizado y colócalo en
+   `app/google-services.json`. **Cada desarrollador debe proporcionar el suyo**;
+   Git ignora este archivo.
+7. Sincroniza Gradle y ejecuta la aplicación.
+
+Google Sign-In usa Credential Manager y el cliente OAuth **web** generado como
+`default_web_client_id`, no el cliente Android. El package, las firmas y el proyecto
+Firebase deben corresponder al APK instalado. Si cambias firmas o habilitas Google
+después de descargar el JSON, vuelve a descargarlo.
+
+En Windows utiliza `gradlew.bat` en lugar de `./gradlew`.
 
 ```bash
 ./gradlew assembleDebug
 ```
 
-El APK generado estará disponible en:
+El APK se genera en `app/build/outputs/apk/debug/`.
 
-```text
-app/build/outputs/apk/debug/
-```
+## Arquitectura
 
----
+MVVM con separación por capas y casos de uso donde aportan lógica de aplicación;
+no pretende ser una implementación estricta de Clean Architecture.
 
-## 🔥 Configuración de Firebase
+- **UI:** pantallas Compose, estados y eventos de ViewModels. Credential Manager
+  obtiene el token de Google en presentación. Los ViewModels dependen de casos
+  de uso y contratos del dominio.
+- **Domain:** modelos, contratos en `domain/repository`, casos de uso y reglas de
+  validación. No importa Android, Firebase, DataStore ni clases de data.
+- **Data:** implementaciones de los contratos, fuentes Firebase y mapper de
+  Firestore. DataStore conserva la preferencia de sesión.
+- **DI:** Hilt proporciona los SDK y enlaza contratos con implementaciones mediante
+  `RepositoryModule` y `@Binds`.
 
-### Compilar y ejecutar con tu propio backend
+Los contratos son `RecipeRepository`, `AuthRepository`, `UserRepository` y
+`SessionRepository`. Sus implementaciones son `FirebaseRecipeRepository`,
+`FirebaseAuthRepository`, `FirestoreUserRepository` y `DataStoreSessionRepository`.
 
-Cada persona que compile con un certificado distinto debe registrar esa firma para utilizar Google Sign-In. No es necesario registrar cada teléfono: se registra la firma del APK.
+El flujo de autenticación Google es:
+Credential Manager → ID token → ViewModel → caso de uso → AuthRepository →
+FirebaseAuthRepository → Firebase Authentication. Las credenciales de Firebase
+se construyen únicamente en data.
 
-1. Crea un proyecto en Firebase.
-2. Registra una aplicación Android con el package:
+## Comportamiento y persistencia
 
-```text
-com.rafario.lahrecetah
-```
+- El login con email exige un correo verificado y cierra la sesión si no lo está.
+- El registro actualiza el nombre, envía el correo de verificación, crea el perfil
+  y cierra la sesión. El primer acceso con Google crea el perfil si no existe.
+- `rememberMe` se guarda en DataStore; Google lo activa al completar el login.
+- Firestore expone recetas mediante Flow; las imágenes se almacenan en Storage.
+- `RecipeValidator` centraliza título, descripción, ingredientes, pasos, duración
+  positiva y dificultad entre 1 y 5. El formulario convierte la duración textual
+  y conserva sus mensajes de validación.
+- Al crear y editar se recortan espacios exteriores y se descartan ingredientes
+  y pasos vacíos, conservando el orden.
+- La cámara utiliza una aplicación externa y FileProvider; uCrop realiza el
+  recorte. Se conservan ese flujo y sus permisos.
 
-3. Obtén las huellas de la firma de debug desde la raíz del repositorio:
+Estos cambios no requieren migraciones, nuevas colecciones ni cambios del esquema
+Firebase. Las reglas e índices del backend siguen gestionándose en Firebase.
+Las recetas ya guardadas no se reescriben automáticamente.
+
+## Testing y calidad
 
 ```bash
-./gradlew :app:signingReport
+./gradlew testDebugUnitTest
+./gradlew lint
+./gradlew assembleDebug
 ```
 
-En Windows, utiliza `gradlew.bat :app:signingReport`. Copia la **SHA-1 de la variante debug** y añádela en Firebase → Configuración del proyecto → Tus aplicaciones → aplicación Android → Huellas digitales del certificado.
+Los tests unitarios cubren el formulario, la validación y normalización al crear
+recetas, la identidad del autor, los errores de persistencia, los eventos y estados
+del login, las escrituras de preferencias, los intentos simultáneos y las emisiones
+del listado. Incluyen casos de cancelación. Usan repositorios fake y
+`kotlinx-coroutines-test`, sin Firebase real ni red.
 
-4. En Authentication → Método de inicio de sesión, habilita **Correo electrónico/contraseña** y **Google**; completa el correo de soporte que solicite la consola.
-5. Crea Cloud Firestore y Firebase Storage. Configura las reglas de acceso de acuerdo con la identidad y propiedad de los datos. Las reglas e índices se gestionan directamente desde el proyecto Firebase y deben estar configurados antes de ejecutar la aplicación.
-6. Descarga el `google-services.json` actualizado después de configurar Google y la firma. Sustituye el archivo situado en:
+La prueba manual de autenticación, verificación de email, cámara, galería y recorte
+requiere un dispositivo o emulador y la configuración Firebase propia.
 
-```text
-app/google-services.json
-```
+## Decisiones técnicas
 
-7. Sincroniza Gradle y vuelve a compilar/ejecutar la aplicación.
+- **Firebase:** resuelve autenticación, datos compartidos e imágenes sin mantener
+  un servidor propio para esta aplicación.
+- **Flow y StateFlow:** permiten observar cambios de Firestore y representar el
+  estado de pantalla de forma reactiva, integrándose con coroutines y Compose.
+- **Repositories mediante interfaces:** separan las operaciones que necesita la
+  aplicación de los SDK y permiten sustituir Firebase por fakes en tests.
+- **Hilt:** construye y comparte dependencias sin que las pantallas o los casos de
+  uso tengan que conocer cómo se inicializan los servicios.
 
-Para el acceso con email, verifica el correo recibido antes de iniciar sesión. Durante el registro, el perfil del usuario se guarda en Firestore mientras la sesión sigue autenticada. Una vez completado correctamente el alta, la aplicación cierra la sesión para exigir la verificación del correo antes del primer acceso.
-Consulta la [guía oficial de Google Sign-In con Firebase](https://firebase.google.com/docs/auth/android/google-signin).
+## Referencias
 
-### Si Google muestra error 10
+- [Google Sign-In con Credential Manager](https://developer.android.com/identity/sign-in/credential-manager-siwg-implementation)
+- [Autenticación Google con Firebase](https://firebase.google.com/docs/auth/android/google-signin)
 
-Comprueba que el proyecto Firebase, el package `com.rafario.lahrecetah`, el cliente OAuth y la SHA-1 corresponden al APK que estás ejecutando. Una firma creada en otro ordenador puede tener una SHA-1 diferente. Después de registrar la firma, descarga la configuración actualizada y recompila.
+## Autor
 
-El código utiliza `default_web_client_id` para solicitar el token de Google: debe ser el cliente OAuth **web**, no el identificador del cliente Android.
-
----
-
-## 📌 Características técnicas destacadas
-
-* **Kotlin + Jetpack Compose**
-* **MVVM**
-* Separación en capas `data`, `domain` y `ui`
-* **Repository Pattern**
-* **Use Cases**
-* **Hilt**
-* **Coroutines & Flow**
-* **Firebase Authentication**
-* **Google Sign-In**
-* **Cloud Firestore**
-* **Firebase Storage**
-* **DataStore**
-* **Navigation Compose**
-* **Coil**
-
----
-
-## 👨‍💻 Autor
-
-Desarrollado por [Rafael Río](https://github.com/RafaelRio).
-
----
-
-## 📄 Sobre el proyecto
-
-Proyecto Android desarrollado como aplicación personal para practicar y aplicar una arquitectura escalable junto con herramientas modernas del ecosistema Android y servicios de Firebase.
+[Rafael Río](https://github.com/RafaelRio)

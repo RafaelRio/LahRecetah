@@ -23,8 +23,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.ui.add_recipe.AddRecipeScreen
 import com.rafario.lahrecetah.ui.profile.ProfileScreen
 import com.rafario.lahrecetah.ui.recipe_list.RecipeListScreen
@@ -38,25 +40,23 @@ fun MainScreen(
     val cs = MaterialTheme.colorScheme
 
     var editingRecipeId by rememberSaveable { mutableStateOf<String?>(null) }
-    val tabs = remember {
-        listOf(
+    val tabs = listOf(
             TabItem(
                 id = 0,
                 icon = Icons.AutoMirrored.Filled.MenuBook,
-                label = "Recetas"
+                label = stringResource(R.string.recipes)
             ),
             TabItem(
                 id = 1,
                 icon = Icons.Default.Add,
-                label = "Añadir receta"
+                label = stringResource(R.string.add_recipe)
             ),
             TabItem(
                 id = 2,
                 icon = Icons.Default.Person,
-                label = "Perfil"
+                label = stringResource(R.string.profile)
             )
         )
-    }
 
     Scaffold(
         modifier = modifier,

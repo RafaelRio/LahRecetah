@@ -1,4 +1,4 @@
-package com.rafario.lahrecetah.domain.mappers
+package com.rafario.lahrecetah.data.mappers
 
 import com.google.firebase.firestore.DocumentSnapshot
 import com.rafario.lahrecetah.domain.model.Recipe

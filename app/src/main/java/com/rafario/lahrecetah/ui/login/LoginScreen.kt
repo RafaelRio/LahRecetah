@@ -1,8 +1,7 @@
 package com.rafario.lahrecetah.ui.login
 
+import android.content.MutableContextWrapper
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -48,21 +48,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.SecureFlagPolicy
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
-import com.google.firebase.auth.GoogleAuthProvider
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.navigation.Routes
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineTextField
 import com.rafario.lahrecetah.ui.register.RegisterScreen
 import com.rafario.lahrecetah.ui.theme.ModalBackground
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,55 +92,50 @@ fun LoginScreen(
         SnackbarHostState()
     }
 
-    val gso = remember {
-        GoogleSignInOptions
-            .Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(
-                context.getString(R.string.default_web_client_id)
-            )
-            .requestEmail()
-            .build()
-    }
-
-    val googleSignInClient = remember {
-        GoogleSignIn.getClient(context, gso)
-    }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val task = GoogleSignIn.getSignedInAccountFromIntent(
-            result.data
-        )
-
-        try {
-            val account = task.getResult(
-                ApiException::class.java
-            )
-
-            val credential = GoogleAuthProvider.getCredential(
-                account.idToken,
-                null
-            )
-
-            viewModel.loginWithGoogle(credential)
-        } catch (e: ApiException) {
-            Toast.makeText(
-                context,
-                "Error al iniciar sesión con Google: ${e.message}",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
+    val credentialManager = remember(context) { CredentialManager.create(context) }
+    val scope = rememberCoroutineScope()
+    var isSelectingGoogleAccount by remember { mutableStateOf(false) }
+    val isBusy = uiState.isLoading || isSelectingGoogleAccount
 
     fun startGoogleSignIn() {
-        googleSignInClient
-            .signOut()
-            .addOnCompleteListener {
-                launcher.launch(
-                    googleSignInClient.signInIntent
+        if (uiState.isLoading || isSelectingGoogleAccount) return
+        isSelectingGoogleAccount = true
+        scope.launch {
+            try {
+                val option = GetSignInWithGoogleOption.Builder(
+                    context.getString(R.string.default_web_client_id)
+                ).build()
+                val response = credentialManager.getCredential(
+                    context = MutableContextWrapper(context),
+                    request = GetCredentialRequest.Builder()
+                        .addCredentialOption(option)
+                        .build()
                 )
+                val credential = response.credential
+                require(
+                    credential is CustomCredential &&
+                        credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+                ) { context.getString(R.string.invalid_google_credential) }
+                val idToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
+                viewModel.loginWithGoogle(idToken)
+            } catch (_: GetCredentialCancellationException) {
+                // Cerrar el selector es una cancelación del usuario, no un error de login.
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: NoCredentialException) {
+                Toast.makeText(
+                    context, context.getString(R.string.google_account_unavailable), Toast.LENGTH_SHORT
+                ).show()
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.google_sign_in_error, e.message),
+                    Toast.LENGTH_SHORT
+                ).show()
+            } finally {
+                isSelectingGoogleAccount = false
             }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -150,7 +151,7 @@ fun LoginScreen(
 
                 is LoginEvent.Error -> {
                     snackbarHostState.showSnackbar(
-                        event.message ?: "Error"
+                        event.message ?: context.getString(R.string.error)
                     )
                 }
             }
@@ -181,11 +182,11 @@ fun LoginScreen(
         ) {
             Image(
                 painter = painterResource(R.drawable.playstore),
-                contentDescription = "Logo"
+                contentDescription = stringResource(R.string.app_logo)
             )
 
             Text(
-                text = "Iniciar sesión",
+                text = stringResource(R.string.login),
                 style = MaterialTheme.typography.displayMedium
             )
 
@@ -196,7 +197,7 @@ fun LoginScreen(
             CustomOutlineTextField(
                 value = uiState.email,
                 onValueChange = viewModel::onEmailChanged,
-                label = "Correo",
+                label = stringResource(R.string.email_label),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email
                 )
@@ -209,7 +210,7 @@ fun LoginScreen(
             CustomOutlineTextField(
                 value = uiState.password,
                 onValueChange = viewModel::onPasswordChanged,
-                label = "Contraseña",
+                label = stringResource(R.string.password),
                 isPassword = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password
@@ -224,7 +225,7 @@ fun LoginScreen(
                     onCheckedChange = viewModel::onRememberMeChanged
                 )
 
-                Text("Recordarme")
+                Text(stringResource(R.string.remember_me))
 
                 Spacer(
                     Modifier.weight(1f)
@@ -238,9 +239,9 @@ fun LoginScreen(
             Button(
                 onClick = viewModel::login,
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading
+                enabled = !isBusy
             ) {
-                Text("Iniciar sesión")
+                Text(stringResource(R.string.login))
             }
 
             Spacer(
@@ -252,14 +253,14 @@ fun LoginScreen(
                     startGoogleSignIn()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading,
+                enabled = !isBusy,
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = Color.White
                 )
             ) {
                 Image(
                     painter = painterResource(R.drawable.ic_google),
-                    contentDescription = "Google Logo",
+                    contentDescription = stringResource(R.string.google_logo),
                     modifier = Modifier.size(20.dp)
                 )
 
@@ -268,7 +269,7 @@ fun LoginScreen(
                 )
 
                 Text(
-                    text = "Continuar con Google",
+                    text = stringResource(R.string.continue_with_google),
                     color = Color.Black
                 )
             }
@@ -277,9 +278,9 @@ fun LoginScreen(
                 onClick = {
                     goToRegister = true
                 },
-                enabled = !uiState.isLoading
+                enabled = !isBusy
             ) {
-                Text("Registrarse")
+                Text(stringResource(R.string.sign_up))
             }
 
             if (goToRegister) {
@@ -307,7 +308,7 @@ fun LoginScreen(
             }
         }
 
-        if (uiState.isLoading) {
+        if (isBusy) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

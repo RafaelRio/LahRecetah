@@ -16,8 +16,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.navigation.Routes
-import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
@@ -39,7 +39,7 @@ fun SplashScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Image(painter = painterResource(id = R.drawable.playstore), contentDescription = "Logo")
+        Image(painter = painterResource(id = R.drawable.playstore), contentDescription = stringResource(R.string.app_logo))
         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall)
     }
 }

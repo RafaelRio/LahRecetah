@@ -22,55 +22,19 @@ object RecipeFormValidator {
         difficulty: Int
     ): RecipeValidationResult {
 
-        if (title.isBlank()) {
-            return RecipeValidationResult.Invalid(
-                "El título es obligatorio"
-            )
-        }
-
-        if (description.isBlank()) {
-            return RecipeValidationResult.Invalid(
-                "La descripción es obligatoria"
-            )
-        }
-
-        if (ingredients.none { it.isNotBlank() }) {
-            return RecipeValidationResult.Invalid(
-                "Añade al menos un ingrediente"
-            )
-        }
-
-        if (steps.none { it.isNotBlank() }) {
-            return RecipeValidationResult.Invalid(
-                "Añade al menos un paso"
-            )
-        }
-
-        if (durationText.isBlank()) {
-            return RecipeValidationResult.Invalid(
-                "La duración es obligatoria"
-            )
-        }
-
         val durationMinutes = durationText.toIntOrNull()
-            ?: return RecipeValidationResult.Invalid(
-                "La duración debe ser un número entero"
-            )
-
-        if (durationMinutes <= 0) {
-            return RecipeValidationResult.Invalid(
-                "La duración debe ser mayor que 0"
-            )
-        }
-
-        if (difficulty !in 1..5) {
-            return RecipeValidationResult.Invalid(
-                "La dificultad debe estar entre 1 y 5"
-            )
-        }
-
-        return RecipeValidationResult.Valid(
-            durationMinutes = durationMinutes
+        val error = RecipeValidator.validate(
+            title, description, ingredients, steps, durationMinutes ?: 0, difficulty
         )
+        if (error != null) {
+            val message = if (error == RecipeValidationError.DURATION && durationMinutes == null) {
+                if (durationText.isBlank()) "La duración es obligatoria"
+                else "La duración debe ser un número entero"
+            } else {
+                error.message
+            }
+            return RecipeValidationResult.Invalid(message)
+        }
+        return RecipeValidationResult.Valid(requireNotNull(durationMinutes))
     }
 }

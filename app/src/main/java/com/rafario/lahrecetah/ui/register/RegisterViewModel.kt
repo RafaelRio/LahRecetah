@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rafario.lahrecetah.domain.usecase.users.RegisterUserUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,7 +12,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
@@ -69,6 +69,9 @@ class RegisterViewModel @Inject constructor(
                     email = state.email.trim(),
                     password = state.password
                 )
+
+                val failure = result.exceptionOrNull()
+                if (failure is CancellationException) throw failure
 
                 if (result.isSuccess) {
                     clearFields()

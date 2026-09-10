@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.capitalize
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.intl.Locale
@@ -38,6 +39,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.domain.model.Recipe
 import com.rafario.lahrecetah.domain.model.RecipeCategory
 
@@ -71,7 +73,7 @@ fun RecipeListScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Todavía no hay recetas disponibles",
+                        text = stringResource(R.string.no_recipes),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

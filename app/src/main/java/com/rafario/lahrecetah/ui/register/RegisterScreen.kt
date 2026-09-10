@@ -21,11 +21,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineTextField
 
 @Composable
@@ -34,6 +37,7 @@ fun RegisterScreen(
     viewModel: RegisterViewModel = hiltViewModel(),
     onDismiss: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember {
@@ -45,7 +49,7 @@ fun RegisterScreen(
             when (event) {
                 RegisterEvent.Success -> {
                     snackbarHostState.showSnackbar(
-                        "Revisa tu correo para confirmar la cuenta"
+                        context.getString(R.string.verify_email_notice)
                     )
 
                     onDismiss()
@@ -53,7 +57,7 @@ fun RegisterScreen(
 
                 is RegisterEvent.Error -> {
                     snackbarHostState.showSnackbar(
-                        event.message ?: "Error desconocido"
+                        event.message ?: context.getString(R.string.unknown_error)
                     )
                 }
             }
@@ -69,21 +73,21 @@ fun RegisterScreen(
             modifier = Modifier.padding(horizontal = 20.dp)
         ) {
             Text(
-                text = "Registro",
+                text = stringResource(R.string.registration),
                 style = MaterialTheme.typography.displayMedium
             )
 
             CustomOutlineTextField(
                 value = uiState.name,
                 onValueChange = viewModel::onNameChanged,
-                label = "Nombre",
+                label = stringResource(R.string.name),
                 modifier = Modifier.padding(top = 10.dp)
             )
 
             CustomOutlineTextField(
                 value = uiState.email,
                 onValueChange = viewModel::onEmailChanged,
-                label = "Email",
+                label = stringResource(R.string.email),
                 modifier = Modifier.padding(top = 10.dp),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email
@@ -93,7 +97,7 @@ fun RegisterScreen(
             CustomOutlineTextField(
                 value = uiState.password,
                 onValueChange = viewModel::onPasswordChanged,
-                label = "Contraseña",
+                label = stringResource(R.string.password),
                 modifier = Modifier.padding(top = 10.dp),
                 isPassword = true,
                 keyboardOptions = KeyboardOptions(
@@ -108,7 +112,7 @@ fun RegisterScreen(
                     .padding(vertical = 21.dp),
                 enabled = !uiState.isLoading
             ) {
-                Text("Registrarse")
+                Text(stringResource(R.string.sign_up))
             }
         }
 

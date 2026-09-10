@@ -49,12 +49,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.domain.model.RecipeCategory
 import com.rafario.lahrecetah.ui.custom_views.BackButton
 
@@ -79,7 +81,7 @@ fun RecipeDetailScreen(
                 Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text(state.error ?: "Error", color = MaterialTheme.colorScheme.error)
+                Text(state.error ?: stringResource(R.string.error), color = MaterialTheme.colorScheme.error)
             }
 
             state.recipe != null -> {
@@ -194,7 +196,7 @@ fun RecipeDetailScreen(
                             if (recipe.description.isNotBlank()) {
                                 item {
                                     SectionCard(
-                                        title = "Descripción",
+                                        title = stringResource(R.string.description),
                                         modifier = Modifier.padding(horizontal = 16.dp)
                                     ) {
                                         Text(
@@ -209,7 +211,7 @@ fun RecipeDetailScreen(
                             if (recipe.ingredients.isNotEmpty()) {
                                 item {
                                     SectionCard(
-                                        title = "Ingredientes",
+                                        title = stringResource(R.string.ingredients),
                                         modifier = Modifier.padding(horizontal = 16.dp)
                                     ) {
                                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -227,7 +229,7 @@ fun RecipeDetailScreen(
                             if (recipe.steps.isNotEmpty()) {
                                 item {
                                     Text(
-                                        text = "Pasos",
+                                        text = stringResource(R.string.steps),
                                         style = MaterialTheme.typography.titleLarge,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 16.dp)
@@ -272,13 +274,13 @@ private fun MetaStripCard(
         ) {
             MetaPill(
                 icon = Icons.Default.AccessTime,
-                text = "$durationMinutes min",
+                text = stringResource(R.string.duration_minutes, durationMinutes),
                 modifier = Modifier.weight(1f)
             )
 
             MetaPill(
                 icon = Icons.Default.Star,
-                text = "${difficulty}/5",
+                text = stringResource(R.string.difficulty_value, difficulty),
                 modifier = Modifier.weight(1f)
             )
 

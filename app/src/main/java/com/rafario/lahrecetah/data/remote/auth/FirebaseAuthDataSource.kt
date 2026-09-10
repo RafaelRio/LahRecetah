@@ -4,89 +4,57 @@ import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
-import kotlin.coroutines.resume
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.tasks.await
 
 class FirebaseAuthDataSource @Inject constructor(
     private val firebaseAuth: FirebaseAuth
 ) {
-
-    suspend fun login(
-        email: String,
-        password: String
-    ): Result<FirebaseUser> =
-        suspendCancellableCoroutine { cont ->
-            firebaseAuth.signInWithEmailAndPassword(email, password)
-                .addOnSuccessListener { result ->
-                    val user = result.user
-
-                    if (user != null && user.isEmailVerified) {
-                        cont.resume(Result.success(user))
-                    } else {
-                        firebaseAuth.signOut()
-                        cont.resume(Result.failure(Exception("Email no verificado")))
-                    }
-                }
-                .addOnFailureListener {
-                    cont.resume(Result.failure(it))
-                }
+    suspend fun login(email: String, password: String): Result<FirebaseUser> {
+        return try {
+            val user = firebaseAuth.signInWithEmailAndPassword(email, password).await().user
+            if (user != null && user.isEmailVerified) {
+                Result.success(user)
+            } else {
+                firebaseAuth.signOut()
+                Result.failure(Exception("Email no verificado"))
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
         }
+    }
 
-    suspend fun loginWithGoogle(credential: AuthCredential): Result<FirebaseUser> =
-        suspendCancellableCoroutine { cont ->
-            firebaseAuth.signInWithCredential(credential)
-                .addOnSuccessListener { result ->
-                    val user = result.user
-                    if (user != null) {
-                        cont.resume(Result.success(user))
-                    } else {
-                        cont.resume(Result.failure(Exception("Usuario nulo")))
-                    }
-                }
-                .addOnFailureListener {
-                    cont.resume(Result.failure(it))
-                }
+    suspend fun loginWithGoogle(credential: AuthCredential): Result<FirebaseUser> {
+        return try {
+            val user = firebaseAuth.signInWithCredential(credential).await().user
+                ?: return Result.failure(Exception("Usuario nulo"))
+            Result.success(user)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
         }
+    }
 
-    suspend fun register(
-        name: String,
-        email: String,
-        password: String
-    ): Result<String> =
-        suspendCancellableCoroutine { cont ->
-            firebaseAuth.createUserWithEmailAndPassword(email, password)
-                .addOnSuccessListener { result ->
-                    val user = result.user ?: run {
-                        cont.resume(Result.failure(Exception("Usuario nulo")))
-                        return@addOnSuccessListener
-                    }
-
-                    val uid = user.uid
-
-                    val profileUpdates = UserProfileChangeRequest.Builder()
-                        .setDisplayName(name)
-                        .build()
-
-                    user.updateProfile(profileUpdates)
-                        .addOnSuccessListener {
-                            user.sendEmailVerification()
-                                .addOnSuccessListener {
-                                    cont.resume(Result.success(uid))
-                                }
-                                .addOnFailureListener { error ->
-                                    cont.resume(Result.failure(error))
-                                }
-                        }
-                        .addOnFailureListener { error ->
-                            cont.resume(Result.failure(error))
-                        }
-                }
-                .addOnFailureListener {
-                    cont.resume(Result.failure(it))
-                }
+    suspend fun register(name: String, email: String, password: String): Result<String> {
+        return try {
+            val user = firebaseAuth.createUserWithEmailAndPassword(email, password).await().user
+                ?: return Result.failure(Exception("Usuario nulo"))
+            val profileUpdates = UserProfileChangeRequest.Builder()
+                .setDisplayName(name)
+                .build()
+            user.updateProfile(profileUpdates).await()
+            user.sendEmailVerification().await()
+            Result.success(user.uid)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
         }
+    }
 
     fun logout() {
         firebaseAuth.signOut()

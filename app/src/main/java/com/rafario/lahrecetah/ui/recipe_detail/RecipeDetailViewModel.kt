@@ -5,13 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.rafario.lahrecetah.domain.model.Recipe
 import com.rafario.lahrecetah.domain.usecase.recipes.ObserveRecipeByIdUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @HiltViewModel
 class RecipeDetailViewModel @Inject constructor(
@@ -31,6 +32,7 @@ class RecipeDetailViewModel @Inject constructor(
 
             observeRecipeByIdUseCase(recipeId)
                 .catch { e ->
+                    if (e is CancellationException) throw e
                     _uiState.value = RecipeDetailUiState(
                         isLoading = false,
                         error = e.message ?: "Error cargando receta"

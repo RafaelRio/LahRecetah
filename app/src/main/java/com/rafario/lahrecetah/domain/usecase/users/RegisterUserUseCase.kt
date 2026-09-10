@@ -1,13 +1,13 @@
 package com.rafario.lahrecetah.domain.usecase.users
 
-import com.rafario.lahrecetah.data.repository.AuthRepository
-import com.rafario.lahrecetah.data.repository.UserFirestoreRepository
 import com.rafario.lahrecetah.domain.model.UserProfile
+import com.rafario.lahrecetah.domain.repository.AuthRepository
+import com.rafario.lahrecetah.domain.repository.UserRepository
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 
 class RegisterUserUseCase @Inject constructor(
-    private val authRepository: AuthRepository, private val userRepository: UserFirestoreRepository
+    private val authRepository: AuthRepository, private val userRepository: UserRepository
 ) {
 
     suspend operator fun invoke(

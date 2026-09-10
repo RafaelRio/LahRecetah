@@ -14,7 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.rafario.lahrecetah.R
 
 @Composable
 fun BackButton(
@@ -33,7 +35,7 @@ fun BackButton(
     ) {
         Icon(
             imageVector = Icons.Default.ArrowBackIosNew,
-            contentDescription = "Volver",
+            contentDescription = stringResource(R.string.back),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(18.dp)
         )

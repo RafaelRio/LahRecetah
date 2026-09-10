@@ -56,6 +56,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -65,6 +66,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.domain.model.RecipeCategory
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineDropdownField
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineTextField
@@ -106,7 +108,7 @@ fun AddRecipeScreen(
                 } else {
                     Toast.makeText(
                         context,
-                        "No se pudo obtener la imagen recortada",
+                        context.getString(R.string.crop_result_missing),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -119,7 +121,7 @@ fun AddRecipeScreen(
 
                 Toast.makeText(
                     context,
-                    error?.message ?: "Error recortando imagen",
+                    error?.message ?: context.getString(R.string.crop_error),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -140,7 +142,7 @@ fun AddRecipeScreen(
                 AddRecipeEvent.Created -> {
                     Toast.makeText(
                         context,
-                        "Receta añadida",
+                        context.getString(R.string.recipe_created),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -148,7 +150,7 @@ fun AddRecipeScreen(
                 AddRecipeEvent.Updated -> {
                     Toast.makeText(
                         context,
-                        "Receta actualizada",
+                        context.getString(R.string.recipe_updated),
                         Toast.LENGTH_SHORT
                     ).show()
 
@@ -158,7 +160,7 @@ fun AddRecipeScreen(
                 is AddRecipeEvent.Error -> {
                     Toast.makeText(
                         context,
-                        event.message ?: "Error inesperado",
+                        event.message ?: context.getString(R.string.unexpected_error),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -215,7 +217,7 @@ fun AddRecipeScreen(
         } catch (e: ActivityNotFoundException) {
             Toast.makeText(
                 context,
-                "No se encontró ninguna aplicación de cámara",
+                context.getString(R.string.camera_unavailable),
                 Toast.LENGTH_SHORT
             ).show()
         }
@@ -229,7 +231,7 @@ fun AddRecipeScreen(
         } else {
             Toast.makeText(
                 context,
-                "Permiso de cámara denegado",
+                context.getString(R.string.camera_permission_denied),
                 Toast.LENGTH_SHORT
             ).show()
         }
@@ -274,12 +276,12 @@ fun AddRecipeScreen(
                             Modifier.height(8.dp)
                         )
 
-                        Text("Añadir imagen")
+                        Text(stringResource(R.string.add_image))
                     }
                 } else {
                     AsyncImage(
                         model = uiState.localImageUri,
-                        contentDescription = "Imagen receta",
+                        contentDescription = stringResource(R.string.recipe_image),
                         modifier = Modifier.matchParentSize(),
                         contentScale = ContentScale.Crop
                     )
@@ -299,7 +301,7 @@ fun AddRecipeScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Eliminar imagen",
+                            contentDescription = stringResource(R.string.remove_image),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -309,14 +311,14 @@ fun AddRecipeScreen(
             CustomOutlineTextField(
                 value = uiState.title,
                 onValueChange = viewModel::onTitleChanged,
-                label = "Título de la receta",
+                label = stringResource(R.string.recipe_title),
                 modifier = Modifier
             )
 
             CustomOutlineTextField(
                 value = uiState.description,
                 onValueChange = viewModel::onDescriptionChanged,
-                label = "Descripción de la receta",
+                label = stringResource(R.string.recipe_description),
                 modifier = Modifier,
                 multiline = true
             )
@@ -329,7 +331,7 @@ fun AddRecipeScreen(
                 CustomOutlineTextField(
                     value = uiState.durationText,
                     onValueChange = viewModel::onDurationChanged,
-                    label = "Duración",
+                    label = stringResource(R.string.duration),
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Number
@@ -340,7 +342,7 @@ fun AddRecipeScreen(
                     modifier = Modifier.weight(1f),
                     value = uiState.category,
                     onValueChange = viewModel::onCategoryChanged,
-                    label = "Categoría",
+                    label = stringResource(R.string.category),
                     options = RecipeCategory.entries.toList(),
                     optionLabel = RecipeCategory::toDisplayName
                 )
@@ -354,11 +356,11 @@ fun AddRecipeScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     SectionHeader(
-                        title = "Dificultad"
+                        title = stringResource(R.string.difficulty)
                     )
 
                     Text(
-                        text = "${uiState.difficulty}/5",
+                        text = stringResource(R.string.difficulty_value, uiState.difficulty),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -378,12 +380,12 @@ fun AddRecipeScreen(
             HorizontalDivider()
 
             SectionHeader(
-                title = "Ingredientes"
+                title = stringResource(R.string.ingredients)
             )
 
             if (uiState.ingredients.isEmpty()) {
                 Text(
-                    text = "No has añadido ingredientes",
+                    text = stringResource(R.string.no_ingredients),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -398,7 +400,7 @@ fun AddRecipeScreen(
                     onRemove = {
                         viewModel.removeIngredient(index)
                     },
-                    placeholder = "Ej. 200g de Harina",
+                    placeholder = stringResource(R.string.ingredient_example),
                     requestFocus =
                         index == uiState.focusedIngredientIndex,
                     onFocusRequested =
@@ -419,18 +421,18 @@ fun AddRecipeScreen(
                     Modifier.padding(4.dp)
                 )
 
-                Text("Añadir Ingrediente")
+                Text(stringResource(R.string.add_ingredient))
             }
 
             HorizontalDivider()
 
             SectionHeader(
-                title = "Pasos de preparación"
+                title = stringResource(R.string.preparation_steps)
             )
 
             if (uiState.steps.isEmpty()) {
                 Text(
-                    text = "No has añadido pasos",
+                    text = stringResource(R.string.no_steps),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -445,7 +447,7 @@ fun AddRecipeScreen(
                     onRemove = {
                         viewModel.removeStep(index)
                     },
-                    placeholder = "Ej. Mezclar los huevos...",
+                    placeholder = stringResource(R.string.step_example),
                     isTextArea = true,
                     requestFocus =
                         index == uiState.focusedStepIndex,
@@ -467,7 +469,7 @@ fun AddRecipeScreen(
                     Modifier.padding(4.dp)
                 )
 
-                Text("Añadir Paso")
+                Text(stringResource(R.string.add_step))
             }
 
             Spacer(
@@ -502,13 +504,13 @@ fun AddRecipeScreen(
                     Modifier.width(10.dp)
                 )
 
-                Text("Guardando…")
+                Text(stringResource(R.string.saving))
             } else {
                 Text(
                     if (uiState.isEditMode) {
-                        "Guardar cambios"
+                        stringResource(R.string.save_changes)
                     } else {
-                        "Guardar receta"
+                        stringResource(R.string.save_recipe)
                     }
                 )
             }
@@ -546,7 +548,7 @@ fun AddRecipeScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Cámara",
+                        contentDescription = stringResource(R.string.camera),
                         modifier = Modifier.size(36.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -555,7 +557,7 @@ fun AddRecipeScreen(
                         Modifier.height(8.dp)
                     )
 
-                    Text("Cámara")
+                    Text(stringResource(R.string.camera))
                 }
 
                 Column(
@@ -567,7 +569,7 @@ fun AddRecipeScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Image,
-                        contentDescription = "Galería",
+                        contentDescription = stringResource(R.string.gallery),
                         modifier = Modifier.size(36.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -576,7 +578,7 @@ fun AddRecipeScreen(
                         Modifier.height(8.dp)
                     )
 
-                    Text("Galería")
+                    Text(stringResource(R.string.gallery))
                 }
             }
         }
@@ -643,7 +645,7 @@ fun DynamicRowItem(
         ) {
             Icon(
                 imageVector = Icons.Default.Delete,
-                contentDescription = "Eliminar",
+                contentDescription = stringResource(R.string.delete),
                 tint = MaterialTheme.colorScheme.error
             )
         }

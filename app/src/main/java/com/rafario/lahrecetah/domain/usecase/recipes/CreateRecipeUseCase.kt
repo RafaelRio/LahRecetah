@@ -1,9 +1,11 @@
 package com.rafario.lahrecetah.domain.usecase.recipes
 
-import com.rafario.lahrecetah.data.repository.AuthRepository
-import com.rafario.lahrecetah.data.repository.RecipeRepository
 import com.rafario.lahrecetah.domain.model.Recipe
 import com.rafario.lahrecetah.domain.model.RecipeCategory
+import com.rafario.lahrecetah.domain.model.normalized
+import com.rafario.lahrecetah.domain.repository.AuthRepository
+import com.rafario.lahrecetah.domain.repository.RecipeRepository
+import com.rafario.lahrecetah.domain.validation.RecipeValidator
 import javax.inject.Inject
 
 class CreateRecipeUseCase @Inject constructor(
@@ -22,24 +24,17 @@ class CreateRecipeUseCase @Inject constructor(
         imageUrl: String
     ): Result<Unit> {
 
-        if (title.isBlank()) return Result.failure(
-            IllegalArgumentException("El título es obligatorio")
+        val error = RecipeValidator.validate(
+            title, description, ingredients, steps, durationMinutes, difficulty
         )
-
-        if (ingredients.isEmpty()) return Result.failure(
-            IllegalArgumentException("Debe haber al menos un ingrediente")
-        )
-
-        if (difficulty !in 1..5) return Result.failure(
-            IllegalArgumentException("La dificultad debe estar entre 1 y 5")
-        )
+        if (error != null) return Result.failure(IllegalArgumentException(error.message))
 
         val user = authRepository.getCurrentUser()
             ?: return Result.failure(Exception("Usuario no autenticado"))
 
         val recipe = Recipe(
-            title = title.trim(),
-            description = description.trim(),
+            title = title,
+            description = description,
             ingredients = ingredients,
             steps = steps,
             category = category,
@@ -48,7 +43,7 @@ class CreateRecipeUseCase @Inject constructor(
             createdByUid = user.uid,
             createdByName = user.displayName.orEmpty(),
             imageUrl = imageUrl
-        )
+        ).normalized()
 
         return recipeRepository.createRecipe(recipe)
     }

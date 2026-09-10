@@ -1,14 +1,15 @@
 package com.rafario.lahrecetah.data.repository
 
-import com.google.firebase.auth.AuthCredential
+import com.google.firebase.auth.GoogleAuthProvider
 import com.rafario.lahrecetah.data.remote.auth.FirebaseAuthDataSource
 import com.rafario.lahrecetah.domain.model.AuthUser
+import com.rafario.lahrecetah.domain.repository.AuthRepository
 import javax.inject.Inject
 
-class AuthRepository @Inject constructor(
+class FirebaseAuthRepository @Inject constructor(
     private val dataSource: FirebaseAuthDataSource
-) {
-    suspend fun login(email: String, password: String): Result<AuthUser> {
+) : AuthRepository {
+    override suspend fun login(email: String, password: String): Result<AuthUser> {
         return dataSource.login(email, password)
             .map { firebaseUser ->
                 AuthUser(
@@ -19,8 +20,8 @@ class AuthRepository @Inject constructor(
             }
     }
 
-    suspend fun loginWithGoogle(credential: AuthCredential): Result<AuthUser> {
-        return dataSource.loginWithGoogle(credential)
+    override suspend fun loginWithGoogle(idToken: String): Result<AuthUser> {
+        return dataSource.loginWithGoogle(GoogleAuthProvider.getCredential(idToken, null))
             .map { firebaseUser ->
                 AuthUser(
                     uid = firebaseUser.uid,
@@ -30,7 +31,7 @@ class AuthRepository @Inject constructor(
             }
     }
 
-    suspend fun register(
+    override suspend fun register(
         name: String,
         email: String,
         password: String
@@ -44,9 +45,9 @@ class AuthRepository @Inject constructor(
             }
     }
 
-    fun logout() = dataSource.logout()
+    override fun logout() = dataSource.logout()
 
-    fun getCurrentUser(): AuthUser? =
+    override fun getCurrentUser(): AuthUser? =
         dataSource.getCurrentUser()
             ?.takeIf { it.isEmailVerified }
             ?.let {
@@ -57,6 +58,6 @@ class AuthRepository @Inject constructor(
                 )
             }
 
-    suspend fun updateDisplayName(newName: String) = dataSource.updateDisplayName(newName)
+    override suspend fun updateDisplayName(newName: String) = dataSource.updateDisplayName(newName)
 
 }

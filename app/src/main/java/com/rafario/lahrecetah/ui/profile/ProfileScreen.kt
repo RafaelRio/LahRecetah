@@ -1,5 +1,6 @@
 package com.rafario.lahrecetah.ui.profile
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -48,12 +49,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.credentials.ClearCredentialStateRequest
+import androidx.credentials.CredentialManager
+import androidx.credentials.exceptions.ClearCredentialException
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.domain.model.Recipe
 import com.rafario.lahrecetah.domain.model.RecipeCategory
 import com.rafario.lahrecetah.navigation.Routes
@@ -71,9 +78,17 @@ fun ProfileScreen(
     // Dropdown state para "Mis recetas"
     var recipesExpanded by rememberSaveable { mutableStateOf(false) }
 
+    val context = LocalContext.current
+
     // navegación logout
     LaunchedEffect(Unit) {
         viewModel.logoutEvent.collect {
+            try {
+                CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest())
+            } catch (e: ClearCredentialException) {
+                // Firebase y la preferencia local ya se han limpiado.
+                Log.w("ProfileScreen", "Could not clear credential provider state", e)
+            }
             navHostController.navigate(Routes.LOGIN) {
                 popUpTo(Routes.MAIN) { inclusive = true }
             }
@@ -86,8 +101,8 @@ fun ProfileScreen(
     if (uiState.errorMessage != null) {
         AlertDialog(
             onDismissRequest = { viewModel.clearError() },
-            confirmButton = { TextButton(onClick = { viewModel.clearError() }) { Text("OK") } },
-            title = { Text("Aviso") },
+            confirmButton = { TextButton(onClick = { viewModel.clearError() }) { Text(stringResource(R.string.ok)) } },
+            title = { Text(stringResource(R.string.notice)) },
             text = { Text(uiState.errorMessage ?: "") })
     }
 
@@ -96,19 +111,19 @@ fun ProfileScreen(
     if (pending != null) {
         AlertDialog(
             onDismissRequest = { if (!uiState.isDeletingRecipe) viewModel.cancelDeleteRecipe() },
-            title = { Text("Eliminar receta") },
-            text = { Text("¿Seguro que quieres eliminar \"${pending.title}\"? Esta acción no se puede deshacer.") },
+            title = { Text(stringResource(R.string.delete_recipe)) },
+            text = { Text(stringResource(R.string.delete_recipe_confirmation, pending.title)) },
             confirmButton = {
                 TextButton(
                     onClick = { viewModel.confirmDeleteRecipe() },
                     enabled = !uiState.isDeletingRecipe
-                ) { Text("Eliminar") }
+                ) { Text(stringResource(R.string.delete)) }
             },
             dismissButton = {
                 TextButton(
                     onClick = { viewModel.cancelDeleteRecipe() },
                     enabled = !uiState.isDeletingRecipe
-                ) { Text("Cancelar") }
+                ) { Text(stringResource(R.string.cancel)) }
             })
     }
 
@@ -126,7 +141,7 @@ fun ProfileScreen(
                 ) {
                     CircularProgressIndicator()
                     Spacer(Modifier.height(12.dp))
-                    Text("Cargando perfil…")
+                    Text(stringResource(R.string.loading_profile))
                 }
             }
 
@@ -157,7 +172,7 @@ fun ProfileScreen(
 
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = profile.name.ifBlank { "Usuario" },
+                                        text = profile.name.ifBlank { stringResource(R.string.user) },
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
@@ -173,7 +188,7 @@ fun ProfileScreen(
                                 }
 
                                 IconButton(onClick = { showEditName = true }) {
-                                    Icon(Icons.Default.Edit, contentDescription = "Editar nombre")
+                                    Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_name))
                                 }
                             }
                         }
@@ -188,11 +203,11 @@ fun ProfileScreen(
 
                     item {
                         RecipeSectionTop(
-                            title = "Mis recetas",
+                            title = stringResource(R.string.my_recipes),
                             subtitle = when {
-                                uiState.isLoadingRecipes -> "Cargando recetas…"
-                                !hasRecipes -> "Aún no has creado recetas."
-                                else -> "${recipes.size} receta(s)"
+                                uiState.isLoadingRecipes -> stringResource(R.string.loading_recipes)
+                                !hasRecipes -> stringResource(R.string.no_own_recipes)
+                                else -> stringResource(R.string.recipe_count, recipes.size)
                             },
                             expanded = recipesExpanded,
                             enabled = !uiState.isLoadingRecipes && hasRecipes,
@@ -207,7 +222,7 @@ fun ProfileScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     CircularProgressIndicator(modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.width(10.dp))
-                                    Text("Cargando recetas…")
+                                    Text(stringResource(R.string.loading_recipes))
                                 }
                             }
                         }
@@ -217,7 +232,7 @@ fun ProfileScreen(
                         item {
                             RecipeSectionInnerRow(isLast = true) {
                                 Text(
-                                    text = "Aún no has creado recetas.",
+                                    text = stringResource(R.string.no_own_recipes),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -247,7 +262,7 @@ fun ProfileScreen(
                         item {
                             RecipeSectionInnerRow(isLast = true) {
                                 Text(
-                                    text = "Toca para desplegar",
+                                    text = stringResource(R.string.tap_to_expand),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -276,19 +291,19 @@ fun ProfileScreen(
                                 Spacer(Modifier.width(10.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        "Cerrar sesión",
+                                        stringResource(R.string.sign_out),
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     Text(
-                                        "Saldrás de tu cuenta en este dispositivo",
+                                        stringResource(R.string.sign_out_description),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 Button(
                                     onClick = { viewModel.logout() }, enabled = !uiState.isSaving
-                                ) { Text("Salir") }
+                                ) { Text(stringResource(R.string.exit)) }
                             }
                         }
                     }
@@ -312,9 +327,9 @@ fun ProfileScreen(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("No se pudo cargar el perfil.")
+                    Text(stringResource(R.string.profile_load_error))
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = { viewModel.loadProfile() }) { Text("Reintentar") }
+                    Button(onClick = { viewModel.loadProfile() }) { Text(stringResource(R.string.retry)) }
                 }
             }
         }
@@ -365,7 +380,7 @@ private fun RecipeSectionTop(
 
             Icon(
                 imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = if (expanded) "Contraer" else "Expandir",
+                contentDescription = if (expanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
                 tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -414,7 +429,7 @@ private fun RecipeRowInSection(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = "${RecipeCategory.toDisplayName(recipe.category)} · ${recipe.durationMinutes} min",
+                text = stringResource(R.string.recipe_summary, RecipeCategory.toDisplayName(recipe.category), recipe.durationMinutes),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -423,11 +438,11 @@ private fun RecipeRowInSection(
         }
 
         IconButton(onClick = onClick) {
-            Icon(Icons.Default.Edit, contentDescription = "Editar receta")
+            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_recipe))
         }
 
         IconButton(onClick = onDelete) {
-            Icon(Icons.Default.Delete, contentDescription = "Eliminar receta")
+            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_recipe))
         }
     }
 
@@ -467,13 +482,13 @@ private fun EditNameDialog(
 
     AlertDialog(
         onDismissRequest = { if (!saving) onDismiss() },
-        title = { Text("Editar nombre") },
+        title = { Text(stringResource(R.string.edit_name)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     value = value,
                     onValueChange = { value = it },
-                    label = { Text("Nombre") },
+                    label = { Text(stringResource(R.string.name)) },
                     singleLine = true,
                     enabled = !saving,
                     modifier = Modifier.fillMaxWidth()
@@ -482,7 +497,7 @@ private fun EditNameDialog(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(10.dp))
-                        Text("Guardando…")
+                        Text(stringResource(R.string.saving))
                     }
                 }
             }
@@ -490,9 +505,9 @@ private fun EditNameDialog(
         confirmButton = {
             TextButton(
                 onClick = { onSave(value) }, enabled = !saving && value.isNotBlank()
-            ) { Text("Guardar") }
+            ) { Text(stringResource(R.string.save)) }
         },
         dismissButton = {
-            TextButton(onClick = { if (!saving) onDismiss() }) { Text("Cancelar") }
+            TextButton(onClick = { if (!saving) onDismiss() }) { Text(stringResource(R.string.cancel)) }
         })
 }

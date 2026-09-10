@@ -2,11 +2,11 @@ package com.rafario.lahrecetah.ui.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.AuthCredential
 import com.rafario.lahrecetah.domain.usecase.users.GoogleLoginUseCase
 import com.rafario.lahrecetah.domain.usecase.users.LoginUserUseCase
 import com.rafario.lahrecetah.domain.usecase.users.SaveRememberMeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
@@ -70,6 +69,9 @@ class LoginViewModel @Inject constructor(
                     state.password
                 )
 
+                val failure = result.exceptionOrNull()
+                if (failure is CancellationException) throw failure
+
                 if (result.isSuccess) {
                     saveRememberMeUseCase(state.rememberMe)
 
@@ -77,7 +79,7 @@ class LoginViewModel @Inject constructor(
                 } else {
                     _loginEvent.emit(
                         LoginEvent.Error(
-                            result.exceptionOrNull()?.message
+                            failure?.message
                                 ?: "No se pudo iniciar sesión"
                         )
                     )
@@ -98,7 +100,7 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    fun loginWithGoogle(credential: AuthCredential) {
+    fun loginWithGoogle(idToken: String) {
         if (_uiState.value.isLoading) {
             return
         }
@@ -109,29 +111,19 @@ class LoginViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val result = loginWithGoogleUseCase(credential)
+                val result = loginWithGoogleUseCase(idToken)
+
+                val failure = result.exceptionOrNull()
+                if (failure is CancellationException) throw failure
 
                 if (result.isSuccess) {
                     saveRememberMeUseCase(true)
 
-                    val authUser = result.getOrNull()
-
-                    if (result.isSuccess) {
-                        saveRememberMeUseCase(true)
-
-                        _loginEvent.emit(LoginEvent.Success)
-                    } else {
-                        _loginEvent.emit(
-                            LoginEvent.Error(
-                                result.exceptionOrNull()?.message
-                                    ?: "No se pudo iniciar sesión con Google"
-                            )
-                        )
-                    }
+                    _loginEvent.emit(LoginEvent.Success)
                 } else {
                     _loginEvent.emit(
                         LoginEvent.Error(
-                            result.exceptionOrNull()?.message
+                            failure?.message
                                 ?: "No se pudo iniciar sesión con Google"
                         )
                     )

@@ -2,13 +2,15 @@ package com.rafario.lahrecetah.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.rafario.lahrecetah.data.repository.AuthRepository
-import com.rafario.lahrecetah.data.repository.RecipeRepository
-import com.rafario.lahrecetah.data.repository.UserFirestoreRepository
 import com.rafario.lahrecetah.domain.model.Recipe
 import com.rafario.lahrecetah.domain.model.UserProfile
+import com.rafario.lahrecetah.domain.repository.AuthRepository
+import com.rafario.lahrecetah.domain.repository.RecipeRepository
+import com.rafario.lahrecetah.domain.repository.UserRepository
 import com.rafario.lahrecetah.domain.usecase.users.LogoutUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,14 +20,12 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-import kotlin.coroutines.cancellation.CancellationException
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val logoutUseCase: LogoutUseCase,
     private val authRepository: AuthRepository,
-    private val userFirestoreRepository: UserFirestoreRepository,
+    private val userRepository: UserRepository,
     private val recipeRepository: RecipeRepository
 ) : ViewModel() {
 
@@ -59,7 +59,7 @@ class ProfileViewModel @Inject constructor(
             observeMyRecipes(authUser.uid)
 
             try {
-                val profile = userFirestoreRepository.getUserProfile(authUser.email)
+                val profile = userRepository.getUserProfile(authUser.email)
                     ?: UserProfile(
                         uid = authUser.uid,
                         name = authUser.displayName ?: "Usuario",
@@ -90,7 +90,7 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
             try {
-                userFirestoreRepository.updateUserName(current.email, newName.trim())
+                userRepository.updateUserName(current.email, newName.trim())
 
                 try {
                     authRepository.updateDisplayName(newName.trim())
@@ -106,6 +106,8 @@ class ProfileViewModel @Inject constructor(
                         profile = current.copy(name = newName.trim())
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -113,6 +115,8 @@ class ProfileViewModel @Inject constructor(
                         errorMessage = e.message ?: "No se pudo actualizar el nombre"
                     )
                 }
+            } finally {
+                _uiState.update { it.copy(isSaving = false) }
             }
         }
     }
@@ -136,6 +140,7 @@ class ProfileViewModel @Inject constructor(
 
             recipeRepository.observeRecipesByUser(uid)
                 .catch { e ->
+                    if (e is CancellationException) throw e
                     _uiState.update {
                         it.copy(
                             isLoadingRecipes = false,
@@ -182,6 +187,7 @@ class ProfileViewModel @Inject constructor(
                     }
                 },
                 onFailure = { e ->
+                    if (e is CancellationException) throw e
                     _uiState.update {
                         it.copy(
                             isDeletingRecipe = false,
