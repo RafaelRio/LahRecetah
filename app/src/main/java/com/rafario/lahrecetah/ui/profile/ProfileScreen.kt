@@ -59,17 +59,15 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.exceptions.ClearCredentialException
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavHostController
 import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.domain.model.Recipe
 import com.rafario.lahrecetah.domain.model.RecipeCategory
-import com.rafario.lahrecetah.navigation.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     modifier: Modifier = Modifier,
-    navHostController: NavHostController,
+    onLogout: () -> Unit,
     onEditRecipe: (String) -> Unit,
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
@@ -89,9 +87,7 @@ fun ProfileScreen(
                 // Firebase y la preferencia local ya se han limpiado.
                 Log.w("ProfileScreen", "Could not clear credential provider state", e)
             }
-            navHostController.navigate(Routes.LOGIN) {
-                popUpTo(Routes.MAIN) { inclusive = true }
-            }
+            onLogout()
         }
     }
 

@@ -37,7 +37,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.domain.model.Recipe
@@ -45,7 +44,7 @@ import com.rafario.lahrecetah.domain.model.RecipeCategory
 
 @Composable
 fun RecipeListScreen(
-    navHostController: NavHostController,
+    onRecipeClick: (String) -> Unit,
     viewModel: RecipeListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -87,9 +86,7 @@ fun RecipeListScreen(
                         key = { recipe -> recipe.id }
                     ) { recipe ->
                         RecipeListItem(recipe) {
-                            navHostController.navigate(
-                                "recipe_detail/${recipe.id}"
-                            )
+                            onRecipeClick(recipe.id)
                         }
                     }
                 }

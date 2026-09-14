@@ -21,11 +21,23 @@ fun AppNavGraph(
     ) {
 
         composable(Routes.SPLASH) {
-            SplashScreen(navHostController)
+            SplashScreen(
+                onNavigate = { destination ->
+                    navHostController.navigate(destination) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable(Routes.LOGIN) {
-            LoginScreen(navHostController = navHostController)
+            LoginScreen(
+                onLoginSuccess = {
+                    navHostController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable(Routes.REGISTER) {
@@ -33,12 +45,24 @@ fun AppNavGraph(
         }
 
         composable(Routes.MAIN) {
-            MainScreen(navHostController = navHostController)
+            MainScreen(
+                onRecipeClick = { recipeId ->
+                    navHostController.navigate("${Routes.RECIPE_DETAIL}/$recipeId")
+                },
+                onLogout = {
+                    navHostController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.MAIN) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable("${Routes.RECIPE_DETAIL}/{recipeId}") { backStackEntry ->
             val id = backStackEntry.arguments?.getString("recipeId") ?: return@composable
-            RecipeDetailScreen(recipeId = id, navHostController = navHostController)
+            RecipeDetailScreen(
+                recipeId = id,
+                onBack = { navHostController.popBackStack() }
+            )
         }
     }
 }

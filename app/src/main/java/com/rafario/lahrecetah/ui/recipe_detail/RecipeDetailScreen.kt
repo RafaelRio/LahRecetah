@@ -54,7 +54,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.domain.model.RecipeCategory
@@ -65,7 +64,7 @@ import com.rafario.lahrecetah.ui.custom_views.BackButton
 fun RecipeDetailScreen(
     recipeId: String,
     viewModel: RecipeDetailViewModel = hiltViewModel(),
-    navHostController: NavHostController
+    onBack: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -125,10 +124,10 @@ fun RecipeDetailScreen(
 
                         BackButton(
                             modifier = Modifier
-                                .padding(top = 15.dp)
-                                .padding(20.dp)
+                                .padding(top = 40.dp)
+                                .padding(30.dp)
                                 .align(Alignment.TopStart),
-                            onClick = { navHostController.popBackStack() }
+                            onClick = onBack
                         )
 
                         Column(

@@ -13,24 +13,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.NavHostController
 import com.rafario.lahrecetah.R
-import com.rafario.lahrecetah.navigation.Routes
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
-    navHostController: NavHostController,
+    onNavigate: (String) -> Unit,
     viewModel: SplashViewModel = hiltViewModel()
 ) {
 
     LaunchedEffect(Unit) {
         delay(2000.milliseconds)
         viewModel.startDestination.collect { destination ->
-            navHostController.navigate(destination) {
-                popUpTo(Routes.SPLASH) { inclusive = true }
-            }
+            onNavigate(destination)
         }
     }
 

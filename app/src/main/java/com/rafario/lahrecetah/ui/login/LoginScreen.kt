@@ -59,11 +59,9 @@ import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.NoCredentialException
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavHostController
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.rafario.lahrecetah.R
-import com.rafario.lahrecetah.navigation.Routes
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineTextField
 import com.rafario.lahrecetah.ui.register.RegisterScreen
 import com.rafario.lahrecetah.ui.theme.ModalBackground
@@ -75,7 +73,7 @@ import kotlinx.coroutines.launch
 fun LoginScreen(
     modifier: Modifier = Modifier,
     viewModel: LoginViewModel = hiltViewModel(),
-    navHostController: NavHostController
+    onLoginSuccess: () -> Unit
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -91,47 +89,68 @@ fun LoginScreen(
     val snackbarHostState = remember {
         SnackbarHostState()
     }
+    val googleSignInHandler = remember(context) {
+        GoogleSignInHandler.create(context)
+    }
 
-    val credentialManager = remember(context) { CredentialManager.create(context) }
     val scope = rememberCoroutineScope()
-    var isSelectingGoogleAccount by remember { mutableStateOf(false) }
-    val isBusy = uiState.isLoading || isSelectingGoogleAccount
+
+    val googleClientId =
+        stringResource(R.string.default_web_client_id)
+
+    var isSelectingGoogleAccount by remember {
+        mutableStateOf(false)
+    }
+
+    val isBusy =
+        uiState.isLoading || isSelectingGoogleAccount
+
 
     fun startGoogleSignIn() {
-        if (uiState.isLoading || isSelectingGoogleAccount) return
+        if (isBusy) return
+
         isSelectingGoogleAccount = true
+
         scope.launch {
             try {
-                val option = GetSignInWithGoogleOption.Builder(
-                    context.getString(R.string.default_web_client_id)
-                ).build()
-                val response = credentialManager.getCredential(
-                    context = MutableContextWrapper(context),
-                    request = GetCredentialRequest.Builder()
-                        .addCredentialOption(option)
-                        .build()
-                )
-                val credential = response.credential
-                require(
-                    credential is CustomCredential &&
-                        credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
-                ) { context.getString(R.string.invalid_google_credential) }
-                val idToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
-                viewModel.loginWithGoogle(idToken)
-            } catch (_: GetCredentialCancellationException) {
-                // Cerrar el selector es una cancelación del usuario, no un error de login.
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: NoCredentialException) {
-                Toast.makeText(
-                    context, context.getString(R.string.google_account_unavailable), Toast.LENGTH_SHORT
-                ).show()
-            } catch (e: Exception) {
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.google_sign_in_error, e.message),
-                    Toast.LENGTH_SHORT
-                ).show()
+                when (
+                    val result = googleSignInHandler.signIn(
+                        context = context,
+                        serverClientId = googleClientId
+                    )
+                ) {
+                    is GoogleSignInResult.Success -> {
+                        viewModel.loginWithGoogle(
+                            result.idToken
+                        )
+                    }
+
+                    GoogleSignInResult.Cancelled -> {
+                        // El usuario cerró el selector.
+                        // No es un error.
+                    }
+
+                    GoogleSignInResult.NoCredential -> {
+                        Toast.makeText(
+                            context,
+                            context.getString(
+                                R.string.google_account_unavailable
+                            ),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+
+                    is GoogleSignInResult.Error -> {
+                        Toast.makeText(
+                            context,
+                            context.getString(
+                                R.string.google_sign_in_error,
+                                result.cause.message
+                            ),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
             } finally {
                 isSelectingGoogleAccount = false
             }
@@ -142,11 +161,7 @@ fun LoginScreen(
         viewModel.loginEvent.collect { event ->
             when (event) {
                 LoginEvent.Success -> {
-                    navHostController.navigate(Routes.MAIN) {
-                        popUpTo(Routes.LOGIN) {
-                            inclusive = true
-                        }
-                    }
+                    onLoginSuccess()
                 }
 
                 is LoginEvent.Error -> {

@@ -25,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
 import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.ui.add_recipe.AddRecipeScreen
 import com.rafario.lahrecetah.ui.profile.ProfileScreen
@@ -34,7 +33,8 @@ import com.rafario.lahrecetah.ui.recipe_list.RecipeListScreen
 @Composable
 fun MainScreen(
     modifier: Modifier = Modifier,
-    navHostController: NavHostController
+    onRecipeClick: (String) -> Unit,
+    onLogout: () -> Unit
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val cs = MaterialTheme.colorScheme
@@ -90,13 +90,13 @@ fun MainScreen(
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
-                0 -> RecipeListScreen(navHostController = navHostController)
+                0 -> RecipeListScreen(onRecipeClick = onRecipeClick)
                 1 -> AddRecipeScreen(editingRecipeId = editingRecipeId, onEditFinished = {
                     editingRecipeId = null
                     selectedTab = 2
                 })
                 2 -> ProfileScreen(
-                    navHostController = navHostController,
+                    onLogout = onLogout,
                     onEditRecipe = { recipeId ->
                         editingRecipeId = recipeId
                         selectedTab = 1
