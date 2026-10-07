@@ -3,7 +3,7 @@ package com.rafario.lahrecetah.ui.recipe_list
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rafario.lahrecetah.domain.model.Recipe
-import com.rafario.lahrecetah.domain.usecase.recipes.GetRecipesUseCase
+import com.rafario.lahrecetah.domain.repository.RecipeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -16,11 +16,11 @@ import kotlinx.coroutines.flow.stateIn
 
 @HiltViewModel
 class RecipeListViewModel @Inject constructor(
-    getRecipesUseCase: GetRecipesUseCase
+    private val repository: RecipeRepository
 ) : ViewModel() {
 
     val uiState: StateFlow<RecipeListUiState> =
-        getRecipesUseCase()
+        repository.observeRecipes()
             .map<List<Recipe>, RecipeListUiState> {
                 RecipeListUiState.Success(it)
             }

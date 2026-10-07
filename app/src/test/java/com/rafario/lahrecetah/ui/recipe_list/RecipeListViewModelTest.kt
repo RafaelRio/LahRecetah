@@ -1,7 +1,6 @@
 package com.rafario.lahrecetah.ui.recipe_list
 
 import com.rafario.lahrecetah.domain.model.Recipe
-import com.rafario.lahrecetah.domain.usecase.recipes.GetRecipesUseCase
 import com.rafario.lahrecetah.testing.FakeRecipeRepository
 import com.rafario.lahrecetah.testing.MainDispatcherRule
 import kotlinx.coroutines.CancellationException
@@ -21,7 +20,7 @@ class RecipeListViewModelTest {
     @Test fun `starts loading and emits successive recipes including empty list`() = runTest {
         val source = MutableSharedFlow<List<Recipe>>()
         val repository = FakeRecipeRepository().apply { recipes = source }
-        val vm = RecipeListViewModel(GetRecipesUseCase(repository))
+        val vm = RecipeListViewModel(repository)
         assertEquals(RecipeListUiState.Loading, vm.uiState.value)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
         runCurrent()
@@ -38,7 +37,7 @@ class RecipeListViewModelTest {
         val repository = FakeRecipeRepository().apply {
             recipes = flow { throw IllegalStateException("read failed") }
         }
-        val vm = RecipeListViewModel(GetRecipesUseCase(repository))
+        val vm = RecipeListViewModel(repository)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
         runCurrent()
         assertEquals(RecipeListUiState.Error("read failed"), vm.uiState.value)
@@ -48,7 +47,7 @@ class RecipeListViewModelTest {
         val repository = FakeRecipeRepository().apply {
             recipes = flow { throw CancellationException("cancel") }
         }
-        val vm = RecipeListViewModel(GetRecipesUseCase(repository))
+        val vm = RecipeListViewModel(repository)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
         runCurrent()
         assertEquals(RecipeListUiState.Loading, vm.uiState.value)
