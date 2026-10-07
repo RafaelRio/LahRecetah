@@ -70,6 +70,15 @@ class RecipeFirestoreDataSource @Inject constructor(
         awaitClose { listener.remove() }
     }
 
+    suspend fun getRecipeById(recipeId: String): Recipe? {
+        val snapshot = firestore.collection("recipes")
+            .document(recipeId)
+            .get()
+            .await()
+
+        return snapshot.takeIf { it.exists() }?.toRecipe()
+    }
+
     fun observeRecipesByUser(uid: String): Flow<List<Recipe>> = callbackFlow {
         val listener = firestore.collection("recipes")
             .whereEqualTo("createdByUid", uid)
