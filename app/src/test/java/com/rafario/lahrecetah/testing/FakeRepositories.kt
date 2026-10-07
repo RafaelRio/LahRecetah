@@ -40,6 +40,7 @@ class FakeAuthRepository : AuthRepository {
 
 class FakeRecipeRepository : RecipeRepository {
     var recipes: Flow<List<Recipe>> = flowOf(emptyList())
+    var recipeById: Flow<Recipe?> = flowOf(null)
     val created = mutableListOf<Recipe>()
     var createResult: Result<Unit> = Result.success(Unit)
     var beforeCreate: suspend () -> Unit = {}
@@ -49,7 +50,7 @@ class FakeRecipeRepository : RecipeRepository {
         created += recipe
         return createResult
     }
-    override fun observeRecipeById(recipeId: String): Flow<Recipe?> = flowOf(null)
+    override fun observeRecipeById(recipeId: String): Flow<Recipe?> = recipeById
     override fun observeRecipesByUser(uid: String) = recipes
     override suspend fun updateRecipe(recipe: Recipe): Result<Unit> = error("Not used in this test")
     override suspend fun deleteRecipe(recipeId: String): Result<Unit> = error("Not used in this test")

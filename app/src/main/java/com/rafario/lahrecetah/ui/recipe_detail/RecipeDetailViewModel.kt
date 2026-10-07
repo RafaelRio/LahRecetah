@@ -3,7 +3,7 @@ package com.rafario.lahrecetah.ui.recipe_detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rafario.lahrecetah.domain.model.Recipe
-import com.rafario.lahrecetah.domain.usecase.recipes.ObserveRecipeByIdUseCase
+import com.rafario.lahrecetah.domain.repository.RecipeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class RecipeDetailViewModel @Inject constructor(
-    private val observeRecipeByIdUseCase: ObserveRecipeByIdUseCase
+    private val recipeRepository: RecipeRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RecipeDetailUiState())
@@ -30,7 +30,7 @@ class RecipeDetailViewModel @Inject constructor(
         recipeJob = viewModelScope.launch {
             _uiState.value = RecipeDetailUiState(isLoading = true)
 
-            observeRecipeByIdUseCase(recipeId)
+            recipeRepository.observeRecipeById(recipeId)
                 .catch { e ->
                     if (e is CancellationException) throw e
                     _uiState.value = RecipeDetailUiState(
