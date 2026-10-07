@@ -315,7 +315,7 @@ class AddRecipeViewModel @Inject constructor(
                         } else {
                             recipeRepository.uploadRecipeImage(
                                 uriString
-                            )
+                            ).getOrThrow()
                         }
                     }
                 }
@@ -408,7 +408,7 @@ class AddRecipeViewModel @Inject constructor(
                         } else {
                             recipeRepository.uploadRecipeImage(
                                 uriString
-                            )
+                            ).getOrThrow()
                         }
                     }
                 }

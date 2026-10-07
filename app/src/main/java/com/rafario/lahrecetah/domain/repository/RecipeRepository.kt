@@ -11,5 +11,6 @@ interface RecipeRepository {
     suspend fun createRecipe(recipe: Recipe): Result<Unit>
     suspend fun updateRecipe(recipe: Recipe): Result<Unit>
     suspend fun deleteRecipe(recipeId: String): Result<Unit>
-    suspend fun uploadRecipeImage(uri: String): String
+    suspend fun deleteRecipeImage(imageUrl: String): Result<Unit>
+    suspend fun uploadRecipeImage(uri: String): Result<String>
 }

@@ -46,6 +46,11 @@ class FakeRecipeRepository : RecipeRepository {
     var getRecipeByIdResult: Result<Recipe?> = Result.success(null)
     var requestedRecipeId: String? = null
     var beforeCreate: suspend () -> Unit = {}
+    var uploadRecipeImageResult: Result<String> =
+        Result.failure(IllegalStateException("Upload not configured"))
+    var uploadedImageUri: String? = null
+    var deleteRecipeImageResult: Result<Unit> = Result.success(Unit)
+    val deletedRecipeImageUrls = mutableListOf<String>()
 
     override suspend fun createRecipe(recipe: Recipe): Result<Unit> {
         beforeCreate()
@@ -58,12 +63,22 @@ class FakeRecipeRepository : RecipeRepository {
         return getRecipeByIdResult
     }
 
+    override suspend fun uploadRecipeImage(uri: String): Result<String> {
+        uploadedImageUri = uri
+        return uploadRecipeImageResult
+    }
+
+    override suspend fun deleteRecipeImage(imageUrl: String): Result<Unit> {
+        if (imageUrl.isBlank()) return Result.success(Unit)
+        deletedRecipeImageUrls += imageUrl
+        return deleteRecipeImageResult
+    }
+
     override fun observeRecipes() = recipes
     override fun observeRecipeById(recipeId: String): Flow<Recipe?> = recipeById
     override fun observeRecipesByUser(uid: String) = recipes
     override suspend fun updateRecipe(recipe: Recipe): Result<Unit> = error("Not used in this test")
     override suspend fun deleteRecipe(recipeId: String): Result<Unit> = error("Not used in this test")
-    override suspend fun uploadRecipeImage(uri: String): String = error("Not used in this test")
 }
 
 class FakeSessionRepository : SessionRepository {

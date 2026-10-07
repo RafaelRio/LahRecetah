@@ -40,7 +40,9 @@ class FirebaseRecipeRepository @Inject constructor(
             dataSource.deleteRecipe(recipeId)
 
             if (imageUrl.isNotBlank()) {
-                deleteRecipeImage(imageUrl)
+                deleteRecipeImage(imageUrl).onFailure { e ->
+                    if (e is CancellationException) throw e
+                }
             }
 
             Result.success(Unit)
@@ -65,7 +67,9 @@ class FirebaseRecipeRepository @Inject constructor(
                         oldImageUrl != recipe.imageUrl
 
             if (imageChanged) {
-                deleteRecipeImage(oldImageUrl)
+                deleteRecipeImage(oldImageUrl).onFailure { e ->
+                    if (e is CancellationException) throw e
+                }
             }
 
             Result.success(Unit)
@@ -94,29 +98,35 @@ class FirebaseRecipeRepository @Inject constructor(
         return dataSource.observeRecipesByUser(uid)
     }
 
-    private suspend fun deleteRecipeImage(imageUrl: String) {
-        try {
+    override suspend fun deleteRecipeImage(imageUrl: String): Result<Unit> {
+        if (imageUrl.isBlank()) return Result.success(Unit)
+
+        return try {
             storage
                 .getReferenceFromUrl(imageUrl)
                 .delete()
                 .await()
+            Result.success(Unit)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
-            // La receta ya se ha eliminado de Firestore.
-            // Un fallo limpiando Storage no debe hacer fallar el borrado completo.
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
-    override suspend fun uploadRecipeImage(uri: String): String {
-        val reference = storage.reference
-            .child("recipes")
-            .child("${java.util.UUID.randomUUID()}.jpg")
+    override suspend fun uploadRecipeImage(uri: String): Result<String> {
+        return try {
+            val reference = storage.reference
+                .child("recipes")
+                .child("${java.util.UUID.randomUUID()}.jpg")
 
-        reference.putFile(uri.toUri()).await()
+            reference.putFile(uri.toUri()).await()
 
-        return reference.downloadUrl
-            .await()
-            .toString()
+            Result.success(reference.downloadUrl.await().toString())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }
