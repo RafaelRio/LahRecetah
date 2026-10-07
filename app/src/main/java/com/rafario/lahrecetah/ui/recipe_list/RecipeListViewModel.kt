@@ -5,14 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.rafario.lahrecetah.domain.model.Recipe
 import com.rafario.lahrecetah.domain.repository.RecipeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import javax.inject.Inject
 
 @HiltViewModel
 class RecipeListViewModel @Inject constructor(
@@ -23,9 +22,6 @@ class RecipeListViewModel @Inject constructor(
         repository.observeRecipes()
             .map<List<Recipe>, RecipeListUiState> {
                 RecipeListUiState.Success(it)
-            }
-            .onStart {
-                emit(RecipeListUiState.Loading)
             }
             .catch { e ->
                 if (e is CancellationException) throw e

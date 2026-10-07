@@ -6,12 +6,14 @@ import com.rafario.lahrecetah.testing.MainDispatcherRule
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RecipeListViewModelTest {
@@ -51,5 +53,35 @@ class RecipeListViewModelTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
         runCurrent()
         assertEquals(RecipeListUiState.Loading, vm.uiState.value)
+    }
+
+    @Test
+    fun `resubscription retains success without synthetic loading`() = runTest {
+        val recipes = listOf(Recipe(id = "1", title = "Tortilla"))
+        val source = MutableStateFlow(recipes)
+        val repository = FakeRecipeRepository().apply { this.recipes = source }
+        val viewModel = RecipeListViewModel(repository)
+
+        val firstCollector = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        runCurrent()
+        assertEquals(RecipeListUiState.Success(recipes), viewModel.uiState.value)
+
+        firstCollector.cancel()
+        runCurrent()
+        advanceTimeBy(5_001.milliseconds)
+        runCurrent()
+
+        val resumedStates = mutableListOf<RecipeListUiState>()
+        val resumedCollector = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect { resumedStates += it }
+        }
+        runCurrent()
+
+        assertEquals(RecipeListUiState.Success(recipes), viewModel.uiState.value)
+        assertFalse(resumedStates.contains(RecipeListUiState.Loading))
+
+        resumedCollector.cancel()
     }
 }
