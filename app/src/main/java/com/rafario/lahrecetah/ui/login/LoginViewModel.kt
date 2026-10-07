@@ -2,11 +2,10 @@ package com.rafario.lahrecetah.ui.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rafario.lahrecetah.domain.repository.AuthRepository
+import com.rafario.lahrecetah.domain.repository.SessionRepository
 import com.rafario.lahrecetah.domain.usecase.users.GoogleLoginUseCase
-import com.rafario.lahrecetah.domain.usecase.users.LoginUserUseCase
-import com.rafario.lahrecetah.domain.usecase.users.SaveRememberMeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,12 +13,13 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val loginUserUseCase: LoginUserUseCase,
+    private val authRepository: AuthRepository,
     private val loginWithGoogleUseCase: GoogleLoginUseCase,
-    private val saveRememberMeUseCase: SaveRememberMeUseCase
+    private val sessionRepository: SessionRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -64,7 +64,7 @@ class LoginViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val result = loginUserUseCase(
+                val result = authRepository.login(
                     state.email.trim(),
                     state.password
                 )
@@ -73,7 +73,7 @@ class LoginViewModel @Inject constructor(
                 if (failure is CancellationException) throw failure
 
                 if (result.isSuccess) {
-                    saveRememberMeUseCase(state.rememberMe)
+                    sessionRepository.saveRememberMe(state.rememberMe)
 
                     _loginEvent.emit(LoginEvent.Success)
                 } else {
@@ -117,7 +117,7 @@ class LoginViewModel @Inject constructor(
                 if (failure is CancellationException) throw failure
 
                 if (result.isSuccess) {
-                    saveRememberMeUseCase(true)
+                    sessionRepository.saveRememberMe(true)
 
                     _loginEvent.emit(LoginEvent.Success)
                 } else {

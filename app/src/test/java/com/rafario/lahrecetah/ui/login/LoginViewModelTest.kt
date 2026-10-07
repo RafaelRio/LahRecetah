@@ -1,26 +1,33 @@
 package com.rafario.lahrecetah.ui.login
 
 import com.rafario.lahrecetah.domain.usecase.users.GoogleLoginUseCase
-import com.rafario.lahrecetah.domain.usecase.users.LoginUserUseCase
-import com.rafario.lahrecetah.domain.usecase.users.SaveRememberMeUseCase
-import com.rafario.lahrecetah.testing.*
+import com.rafario.lahrecetah.testing.FakeAuthRepository
+import com.rafario.lahrecetah.testing.FakeSessionRepository
+import com.rafario.lahrecetah.testing.FakeUserRepository
+import com.rafario.lahrecetah.testing.MainDispatcherRule
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.*
-import org.junit.Assert.*
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
-    @get:Rule val main = MainDispatcherRule()
+    @get:Rule
+    val main = MainDispatcherRule()
     private val auth = FakeAuthRepository()
     private val session = FakeSessionRepository()
     private val users = FakeUserRepository()
     private fun viewModel() = LoginViewModel(
-        LoginUserUseCase(auth), GoogleLoginUseCase(auth, users), SaveRememberMeUseCase(session)
+        auth, GoogleLoginUseCase(auth, users), session
     ).apply {
         onEmailChanged(" cook@example.com ")
         onPasswordChanged("password")
@@ -34,7 +41,8 @@ class LoginViewModelTest {
         return events
     }
 
-    @Test fun `empty fields emit error without logging in`() = runTest {
+    @Test
+    fun `empty fields emit error without logging in`() = runTest {
         for (emailEmpty in listOf(true, false)) {
             val vm = viewModel()
             val events = events(vm)
@@ -48,7 +56,8 @@ class LoginViewModelTest {
         assertTrue(session.savedValues.isEmpty())
     }
 
-    @Test fun `email success emits once and saves selected remember me once`() = runTest {
+    @Test
+    fun `email success emits once and saves selected remember me once`() = runTest {
         val vm = viewModel()
         val events = events(vm)
         vm.onRememberMeChanged(true)
@@ -61,7 +70,8 @@ class LoginViewModelTest {
         assertFalse(vm.uiState.value.isLoading)
     }
 
-    @Test fun `email login preserves unchecked remember me`() = runTest {
+    @Test
+    fun `email login preserves unchecked remember me`() = runTest {
         val vm = viewModel()
         events(vm)
         vm.login()
@@ -69,7 +79,8 @@ class LoginViewModelTest {
         assertEquals(listOf(false), session.savedValues)
     }
 
-    @Test fun `google success uses token saves once and creates profile`() = runTest {
+    @Test
+    fun `google success uses token saves once and creates profile`() = runTest {
         val vm = viewModel()
         val events = events(vm)
         vm.loginWithGoogle("google-token")
@@ -81,7 +92,8 @@ class LoginViewModelTest {
         assertFalse(vm.uiState.value.isLoading)
     }
 
-    @Test fun `both login failures emit error and restore loading`() = runTest {
+    @Test
+    fun `both login failures emit error and restore loading`() = runTest {
         auth.loginResult = Result.failure(IllegalStateException("login failed"))
         for (google in listOf(false, true)) {
             val vm = viewModel()
@@ -94,7 +106,8 @@ class LoginViewModelTest {
         assertTrue(session.savedValues.isEmpty())
     }
 
-    @Test fun `remember me failure emits error instead of success`() = runTest {
+    @Test
+    fun `remember me failure emits error instead of success`() = runTest {
         session.saveFailure = IllegalStateException("storage failed")
         val vm = viewModel()
         val events = events(vm)
@@ -105,7 +118,8 @@ class LoginViewModelTest {
         assertFalse(vm.uiState.value.isLoading)
     }
 
-    @Test fun `in flight login blocks both methods`() = runTest {
+    @Test
+    fun `in flight login blocks both methods`() = runTest {
         for (google in listOf(false, true)) {
             val gate = CompletableDeferred<Unit>()
             auth.beforeLogin = { gate.await() }
@@ -126,7 +140,8 @@ class LoginViewModelTest {
         }
     }
 
-    @Test fun `cancellation produces no event and restores loading`() = runTest {
+    @Test
+    fun `cancellation produces no event and restores loading`() = runTest {
         auth.beforeLogin = { throw CancellationException("cancel") }
         for (google in listOf(false, true)) {
             val vm = viewModel()
@@ -138,7 +153,9 @@ class LoginViewModelTest {
         }
         assertTrue(session.savedValues.isEmpty())
     }
-    @Test fun `cancellation in result is not shown as a login error`() = runTest {
+
+    @Test
+    fun `cancellation in result is not shown as a login error`() = runTest {
         auth.loginResult = Result.failure(CancellationException("cancel"))
         for (google in listOf(false, true)) {
             val vm = viewModel()
@@ -151,7 +168,8 @@ class LoginViewModelTest {
         assertTrue(session.savedValues.isEmpty())
     }
 
-    @Test fun `cancellation while saving preferences restores loading without success`() = runTest {
+    @Test
+    fun `cancellation while saving preferences restores loading without success`() = runTest {
         session.saveFailure = CancellationException("cancel")
         val vm = viewModel()
         val events = events(vm)
