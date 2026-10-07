@@ -4,12 +4,12 @@ import androidx.core.net.toUri
 import com.google.firebase.storage.FirebaseStorage
 import com.rafario.lahrecetah.data.remote.firestore.RecipeFirestoreDataSource
 import com.rafario.lahrecetah.domain.model.Recipe
+import com.rafario.lahrecetah.domain.recipe.RecipeNotFoundException
 import com.rafario.lahrecetah.domain.repository.RecipeRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.tasks.await
 
 class FirebaseRecipeRepository @Inject constructor(
     private val dataSource: RecipeFirestoreDataSource,
@@ -33,9 +33,7 @@ class FirebaseRecipeRepository @Inject constructor(
 
     override suspend fun deleteRecipe(recipeId: String): Result<Unit> {
         return try {
-            val recipe = dataSource
-                .observeRecipeById(recipeId)
-                .first()
+            val recipe = dataSource.getRecipeById(recipeId)
 
             val imageUrl = recipe?.imageUrl.orEmpty()
 
@@ -55,11 +53,10 @@ class FirebaseRecipeRepository @Inject constructor(
 
     override suspend fun updateRecipe(recipe: Recipe): Result<Unit> {
         return try {
-            val currentRecipe = dataSource
-                .observeRecipeById(recipe.id)
-                .first()
+            val currentRecipe = dataSource.getRecipeById(recipe.id)
+                ?: return Result.failure(RecipeNotFoundException())
 
-            val oldImageUrl = currentRecipe?.imageUrl.orEmpty()
+            val oldImageUrl = currentRecipe.imageUrl
 
             dataSource.updateRecipe(recipe)
 
@@ -81,6 +78,16 @@ class FirebaseRecipeRepository @Inject constructor(
 
     override fun observeRecipeById(recipeId: String): Flow<Recipe?> {
         return dataSource.observeRecipeById(recipeId)
+    }
+
+    override suspend fun getRecipeById(recipeId: String): Result<Recipe?> {
+        return try {
+            Result.success(dataSource.getRecipeById(recipeId))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     override fun observeRecipesByUser(uid: String): Flow<List<Recipe>> {

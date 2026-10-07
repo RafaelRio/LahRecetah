@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 interface RecipeRepository {
     fun observeRecipes(): Flow<List<Recipe>>
     fun observeRecipeById(recipeId: String): Flow<Recipe?>
+    suspend fun getRecipeById(recipeId: String): Result<Recipe?>
     fun observeRecipesByUser(uid: String): Flow<List<Recipe>>
     suspend fun createRecipe(recipe: Recipe): Result<Unit>
     suspend fun updateRecipe(recipe: Recipe): Result<Unit>

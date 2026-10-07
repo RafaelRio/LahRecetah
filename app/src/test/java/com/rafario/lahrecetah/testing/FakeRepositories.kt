@@ -43,13 +43,22 @@ class FakeRecipeRepository : RecipeRepository {
     var recipeById: Flow<Recipe?> = flowOf(null)
     val created = mutableListOf<Recipe>()
     var createResult: Result<Unit> = Result.success(Unit)
+    var getRecipeByIdResult: Result<Recipe?> = Result.success(null)
+    var requestedRecipeId: String? = null
     var beforeCreate: suspend () -> Unit = {}
-    override fun observeRecipes() = recipes
+
     override suspend fun createRecipe(recipe: Recipe): Result<Unit> {
         beforeCreate()
         created += recipe
         return createResult
     }
+
+    override suspend fun getRecipeById(recipeId: String): Result<Recipe?> {
+        requestedRecipeId = recipeId
+        return getRecipeByIdResult
+    }
+
+    override fun observeRecipes() = recipes
     override fun observeRecipeById(recipeId: String): Flow<Recipe?> = recipeById
     override fun observeRecipesByUser(uid: String) = recipes
     override suspend fun updateRecipe(recipe: Recipe): Result<Unit> = error("Not used in this test")
