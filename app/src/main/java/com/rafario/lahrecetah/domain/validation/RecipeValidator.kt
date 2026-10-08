@@ -1,12 +1,12 @@
 package com.rafario.lahrecetah.domain.validation
 
-enum class RecipeValidationError(val message: String) {
-    TITLE("El título es obligatorio"),
-    DESCRIPTION("La descripción es obligatoria"),
-    INGREDIENTS("Añade al menos un ingrediente"),
-    STEPS("Añade al menos un paso"),
-    DURATION("La duración debe ser mayor que 0"),
-    DIFFICULTY("La dificultad debe estar entre 1 y 5")
+enum class RecipeValidationError {
+    TITLE,
+    DESCRIPTION,
+    INGREDIENTS,
+    STEPS,
+    DURATION,
+    DIFFICULTY
 }
 
 object RecipeValidator {

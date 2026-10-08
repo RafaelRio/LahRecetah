@@ -5,6 +5,7 @@ import com.rafario.lahrecetah.domain.model.RecipeCategory
 import com.rafario.lahrecetah.domain.model.normalized
 import com.rafario.lahrecetah.domain.repository.AuthRepository
 import com.rafario.lahrecetah.domain.repository.RecipeRepository
+import com.rafario.lahrecetah.domain.validation.RecipeValidationException
 import com.rafario.lahrecetah.domain.validation.RecipeValidator
 import javax.inject.Inject
 
@@ -27,7 +28,7 @@ class CreateRecipeUseCase @Inject constructor(
         val error = RecipeValidator.validate(
             title, description, ingredients, steps, durationMinutes, difficulty
         )
-        if (error != null) return Result.failure(IllegalArgumentException(error.message))
+        if (error != null) return Result.failure(RecipeValidationException(error))
 
         val user = authRepository.getCurrentUser()
             ?: return Result.failure(Exception("Usuario no autenticado"))

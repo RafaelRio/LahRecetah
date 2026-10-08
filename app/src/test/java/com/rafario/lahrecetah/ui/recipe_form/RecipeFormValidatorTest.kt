@@ -1,7 +1,7 @@
-package com.rafario.lahrecetah.domain.validation
+package com.rafario.lahrecetah.ui.recipe_form
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import com.rafario.lahrecetah.domain.validation.RecipeValidationError
+import org.junit.Assert
 import org.junit.Test
 
 class RecipeFormValidatorTest {
@@ -17,10 +17,10 @@ class RecipeFormValidatorTest {
             difficulty = 3
         )
 
-        assertTrue(result is RecipeValidationResult.Valid)
+        Assert.assertTrue(result is RecipeFormValidationResult.Valid)
 
-        val validResult = result as RecipeValidationResult.Valid
-        assertEquals(45, validResult.durationMinutes)
+        val validResult = result as RecipeFormValidationResult.Valid
+        Assert.assertEquals(45, validResult.durationMinutes)
     }
 
     @Test
@@ -36,7 +36,7 @@ class RecipeFormValidatorTest {
 
         assertInvalid(
             result = result,
-            expectedMessage = "El título es obligatorio"
+            expectedError = RecipeFormValidationError.Domain(RecipeValidationError.TITLE)
         )
     }
 
@@ -53,7 +53,7 @@ class RecipeFormValidatorTest {
 
         assertInvalid(
             result = result,
-            expectedMessage = "La descripción es obligatoria"
+            expectedError = RecipeFormValidationError.Domain(RecipeValidationError.DESCRIPTION)
         )
     }
 
@@ -70,7 +70,7 @@ class RecipeFormValidatorTest {
 
         assertInvalid(
             result = result,
-            expectedMessage = "Añade al menos un ingrediente"
+            expectedError = RecipeFormValidationError.Domain(RecipeValidationError.INGREDIENTS)
         )
     }
 
@@ -87,7 +87,7 @@ class RecipeFormValidatorTest {
 
         assertInvalid(
             result = result,
-            expectedMessage = "Añade al menos un ingrediente"
+            expectedError = RecipeFormValidationError.Domain(RecipeValidationError.INGREDIENTS)
         )
     }
 
@@ -104,7 +104,7 @@ class RecipeFormValidatorTest {
 
         assertInvalid(
             result = result,
-            expectedMessage = "Añade al menos un paso"
+            expectedError = RecipeFormValidationError.Domain(RecipeValidationError.STEPS)
         )
     }
 
@@ -121,7 +121,7 @@ class RecipeFormValidatorTest {
 
         assertInvalid(
             result = result,
-            expectedMessage = "Añade al menos un paso"
+            expectedError = RecipeFormValidationError.Domain(RecipeValidationError.STEPS)
         )
     }
 
@@ -132,8 +132,7 @@ class RecipeFormValidatorTest {
         )
 
         assertInvalid(
-            result = result,
-            expectedMessage = "La duración es obligatoria"
+            result = result, expectedError = RecipeFormValidationError.DurationRequired
         )
     }
 
@@ -144,8 +143,7 @@ class RecipeFormValidatorTest {
         )
 
         assertInvalid(
-            result = result,
-            expectedMessage = "La duración debe ser un número entero"
+            result = result, expectedError = RecipeFormValidationError.DurationNotInteger
         )
     }
 
@@ -157,7 +155,7 @@ class RecipeFormValidatorTest {
 
         assertInvalid(
             result = result,
-            expectedMessage = "La duración debe ser mayor que 0"
+            expectedError = RecipeFormValidationError.Domain(RecipeValidationError.DURATION)
         )
     }
 
@@ -169,7 +167,7 @@ class RecipeFormValidatorTest {
 
         assertInvalid(
             result = result,
-            expectedMessage = "La duración debe ser mayor que 0"
+            expectedError = RecipeFormValidationError.Domain(RecipeValidationError.DURATION)
         )
     }
 
@@ -181,7 +179,7 @@ class RecipeFormValidatorTest {
 
         assertInvalid(
             result = result,
-            expectedMessage = "La dificultad debe estar entre 1 y 5"
+            expectedError = RecipeFormValidationError.Domain(RecipeValidationError.DIFFICULTY)
         )
     }
 
@@ -193,14 +191,13 @@ class RecipeFormValidatorTest {
 
         assertInvalid(
             result = result,
-            expectedMessage = "La dificultad debe estar entre 1 y 5"
+            expectedError = RecipeFormValidationError.Domain(RecipeValidationError.DIFFICULTY)
         )
     }
 
     private fun validRecipe(
-        durationText: String = "30",
-        difficulty: Int = 3
-    ): RecipeValidationResult {
+        durationText: String = "30", difficulty: Int = 3
+    ): RecipeFormValidationResult {
         return RecipeFormValidator.validate(
             title = "Receta válida",
             description = "Descripción válida",
@@ -212,12 +209,11 @@ class RecipeFormValidatorTest {
     }
 
     private fun assertInvalid(
-        result: RecipeValidationResult,
-        expectedMessage: String
+        result: RecipeFormValidationResult, expectedError: RecipeFormValidationError
     ) {
-        assertTrue(result is RecipeValidationResult.Invalid)
+        Assert.assertTrue(result is RecipeFormValidationResult.Invalid)
 
-        val invalidResult = result as RecipeValidationResult.Invalid
-        assertEquals(expectedMessage, invalidResult.message)
+        val invalidResult = result as RecipeFormValidationResult.Invalid
+        Assert.assertEquals(expectedError, invalidResult.error)
     }
 }

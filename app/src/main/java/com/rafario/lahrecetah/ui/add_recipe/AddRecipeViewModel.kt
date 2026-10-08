@@ -8,8 +8,10 @@ import com.rafario.lahrecetah.domain.model.RecipeCategory
 import com.rafario.lahrecetah.domain.model.normalized
 import com.rafario.lahrecetah.domain.repository.RecipeRepository
 import com.rafario.lahrecetah.domain.usecase.recipes.CreateRecipeUseCase
-import com.rafario.lahrecetah.domain.validation.RecipeFormValidator
-import com.rafario.lahrecetah.domain.validation.RecipeValidationResult
+import com.rafario.lahrecetah.domain.validation.RecipeValidationException
+import com.rafario.lahrecetah.ui.recipe_form.RecipeFormValidationError
+import com.rafario.lahrecetah.ui.recipe_form.RecipeFormValidationResult
+import com.rafario.lahrecetah.ui.recipe_form.RecipeFormValidator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -294,16 +296,12 @@ class AddRecipeViewModel @Inject constructor(
                 )
 
                 val durationMinutes = when (validation) {
-                    is RecipeValidationResult.Invalid -> {
-                        _uiEvent.emit(
-                            AddRecipeEvent.Error(validation.message)
-                        )
+                    is RecipeFormValidationResult.Invalid -> {
+                        _uiEvent.emit(AddRecipeEvent.ValidationError(validation.error))
                         return@launch
                     }
 
-                    is RecipeValidationResult.Valid -> {
-                        validation.durationMinutes
-                    }
+                    is RecipeFormValidationResult.Valid -> validation.durationMinutes
                 }
 
                 val finalImageUrl = when (val uriString = state.localImageUri) {
@@ -336,6 +334,18 @@ class AddRecipeViewModel @Inject constructor(
 
                 val failure = result.exceptionOrNull()
                 if (failure is CancellationException) throw failure
+
+                if (failure is RecipeValidationException) {
+                    _uiEvent.emit(
+                        AddRecipeEvent.ValidationError(
+                            RecipeFormValidationError.Domain(failure.reason)
+                        )
+                    )
+                } else {
+                    _uiEvent.emit(
+                        AddRecipeEvent.Error(failure?.message ?: "Error desconocido")
+                    )
+                }
 
                 if (result.isSuccess) {
                     exitEditingMode()
@@ -387,16 +397,12 @@ class AddRecipeViewModel @Inject constructor(
                 )
 
                 val durationMinutes = when (validation) {
-                    is RecipeValidationResult.Invalid -> {
-                        _uiEvent.emit(
-                            AddRecipeEvent.Error(validation.message)
-                        )
+                    is RecipeFormValidationResult.Invalid -> {
+                        _uiEvent.emit(AddRecipeEvent.ValidationError(validation.error))
                         return@launch
                     }
 
-                    is RecipeValidationResult.Valid -> {
-                        validation.durationMinutes
-                    }
+                    is RecipeFormValidationResult.Valid -> validation.durationMinutes
                 }
 
                 val imageUrl = when (val uriString = state.localImageUri) {
@@ -427,16 +433,25 @@ class AddRecipeViewModel @Inject constructor(
                 val failure = result.exceptionOrNull()
                 if (failure is CancellationException) throw failure
 
-                if (result.isSuccess) {
-                    clearForm()
-                    _uiEvent.emit(AddRecipeEvent.Created)
-                } else {
-                    _uiEvent.emit(
-                        AddRecipeEvent.Error(
-                            result.exceptionOrNull()?.message
-                                ?: "Error desconocido"
+                when {
+                    result.isSuccess -> {
+                        clearForm()
+                        _uiEvent.emit(AddRecipeEvent.Created)
+                    }
+
+                    failure is RecipeValidationException -> {
+                        _uiEvent.emit(
+                            AddRecipeEvent.ValidationError(
+                                RecipeFormValidationError.Domain(failure.reason)
+                            )
                         )
-                    )
+                    }
+
+                    else -> {
+                        _uiEvent.emit(
+                            AddRecipeEvent.Error(failure?.message ?: "Error desconocido")
+                        )
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -482,6 +497,7 @@ sealed class AddRecipeEvent {
     data object Created : AddRecipeEvent()
     data object Updated : AddRecipeEvent()
     data class Error(val message: String?) : AddRecipeEvent()
+    data class ValidationError(val error: RecipeFormValidationError) : AddRecipeEvent()
 }
 
 data class AddRecipeUiState(

@@ -67,8 +67,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.rafario.lahrecetah.R
 import com.rafario.lahrecetah.domain.model.RecipeCategory
+import com.rafario.lahrecetah.domain.validation.RecipeValidationError
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineDropdownField
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineTextField
+import com.rafario.lahrecetah.ui.recipe_form.RecipeFormValidationError
 import com.rafario.lahrecetah.utils.dashedBorder
 import com.rafario.lahrecetah.utils.positionAwareImePadding
 import com.yalantis.ucrop.UCrop
@@ -160,6 +162,31 @@ fun AddRecipeScreen(
                     Toast.makeText(
                         context,
                         event.message ?: context.getString(R.string.unexpected_error),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+
+                is AddRecipeEvent.ValidationError -> {
+                    val resourceId = when (val error = event.error) {
+                        RecipeFormValidationError.DurationRequired ->
+                            R.string.recipe_validation_duration_required
+
+                        RecipeFormValidationError.DurationNotInteger ->
+                            R.string.recipe_validation_duration_not_integer
+
+                        is RecipeFormValidationError.Domain -> when (error.reason) {
+                            RecipeValidationError.TITLE -> R.string.recipe_validation_title
+                            RecipeValidationError.DESCRIPTION -> R.string.recipe_validation_description
+                            RecipeValidationError.INGREDIENTS -> R.string.recipe_validation_ingredients
+                            RecipeValidationError.STEPS -> R.string.recipe_validation_steps
+                            RecipeValidationError.DURATION -> R.string.recipe_validation_duration
+                            RecipeValidationError.DIFFICULTY -> R.string.recipe_validation_difficulty
+                        }
+                    }
+
+                    Toast.makeText(
+                        context,
+                        context.getString(resourceId),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
