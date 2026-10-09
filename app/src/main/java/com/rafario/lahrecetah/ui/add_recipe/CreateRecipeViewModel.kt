@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import androidx.lifecycle.viewModelScope
+import com.rafario.lahrecetah.domain.repository.RecipeRepository
 import com.rafario.lahrecetah.domain.usecase.recipes.CreateRecipeUseCase
 import com.rafario.lahrecetah.domain.validation.RecipeValidationException
 import com.rafario.lahrecetah.ui.recipe_form.RecipeFormValidationError
@@ -21,7 +22,8 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class CreateRecipeViewModel @Inject constructor(
-    private val createRecipeUseCase: CreateRecipeUseCase
+    private val createRecipeUseCase: CreateRecipeUseCase,
+    private val recipeRepository: RecipeRepository
 ) : ViewModel() {
     private val formStateHolder = RecipeFormStateHolder()
     val formState = formStateHolder.state
@@ -82,6 +84,22 @@ class CreateRecipeViewModel @Inject constructor(
                     is RecipeFormValidationResult.Valid -> validation.durationMinutes
                 }
 
+                val imageUrl = state.selectedLocalImageUri?.let { uri ->
+                    val uploadResult = recipeRepository.uploadRecipeImage(uri)
+                    val uploadFailure = uploadResult.exceptionOrNull()
+
+                    if (uploadFailure is CancellationException) throw uploadFailure
+
+                    if (uploadFailure != null) {
+                        _uiEvent.emit(
+                            CreateRecipeEvent.Error(RecipeFormUiError.ImageUploadFailed)
+                        )
+                        return@launch
+                    }
+
+                    uploadResult.getOrThrow()
+                } ?: ""
+
                 val result = createRecipeUseCase(
                     title = state.title,
                     description = state.description,
@@ -90,7 +108,7 @@ class CreateRecipeViewModel @Inject constructor(
                     category = state.category,
                     durationMinutes = durationMinutes,
                     difficulty = state.difficulty,
-                    imageUrl = ""
+                    imageUrl = imageUrl
                 )
 
                 val failure = result.exceptionOrNull()

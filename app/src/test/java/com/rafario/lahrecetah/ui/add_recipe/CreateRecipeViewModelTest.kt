@@ -11,7 +11,6 @@ import com.rafario.lahrecetah.ui.recipe_form.RecipeFormValidationError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -128,9 +127,73 @@ class CreateRecipeViewModelTest {
         assertFalse(viewModel.isLoading.value)
     }
 
+    @Test
+    fun `uploaded image url is persisted with the recipe`() = runTest {
+        val uri = "content://recipes/image"
+        val imageUrl = "https://storage.example/image.jpg"
+        val repository = FakeRecipeRepository().apply {
+            uploadRecipeImageResult = Result.success(imageUrl)
+        }
+        val viewModel = createViewModel(repository)
+        fillValidForm(viewModel)
+        viewModel.onImageSelected(uri)
+        val event = async { viewModel.uiEvent.first() }
+        runCurrent()
+
+        viewModel.createRecipe()
+        advanceUntilIdle()
+
+        assertEquals(CreateRecipeEvent.Created, event.await())
+        assertEquals(uri, repository.uploadedImageUri)
+        assertEquals(imageUrl, repository.created.single().imageUrl)
+    }
+
+    @Test
+    fun `upload failure emits typed error without persisting`() = runTest {
+        val repository = FakeRecipeRepository().apply {
+            uploadRecipeImageResult = Result.failure(IllegalStateException("upload failed"))
+        }
+        val viewModel = createViewModel(repository)
+        fillValidForm(viewModel)
+        viewModel.onImageSelected("content://recipes/image")
+        val event = async { viewModel.uiEvent.first() }
+        runCurrent()
+
+        viewModel.createRecipe()
+        advanceUntilIdle()
+
+        assertEquals(
+            CreateRecipeEvent.Error(RecipeFormUiError.ImageUploadFailed),
+            event.await()
+        )
+        assertTrue(repository.created.isEmpty())
+    }
+
+    @Test
+    fun `upload cancellation wrapped in result is not converted to UI error`() = runTest {
+        val repository = FakeRecipeRepository().apply {
+            uploadRecipeImageResult = Result.failure(CancellationException("cancel"))
+        }
+        val viewModel = createViewModel(repository)
+        val events = mutableListOf<CreateRecipeEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiEvent.collect { events += it }
+        }
+        fillValidForm(viewModel)
+        viewModel.onImageSelected("content://recipes/image")
+
+        viewModel.createRecipe()
+        advanceUntilIdle()
+
+        assertTrue(events.isEmpty())
+        assertTrue(repository.created.isEmpty())
+        assertFalse(viewModel.isLoading.value)
+    }
+
     private fun createViewModel(repository: FakeRecipeRepository) =
         CreateRecipeViewModel(
-            CreateRecipeUseCase(repository, FakeAuthRepository())
+            CreateRecipeUseCase(repository, FakeAuthRepository()),
+            repository
         )
 
     private fun fillValidForm(viewModel: CreateRecipeViewModel) {
