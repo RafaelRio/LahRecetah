@@ -22,6 +22,12 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
+import org.junit.Assert.assertSame
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CreateRecipeViewModelTest {
@@ -90,8 +96,10 @@ class CreateRecipeViewModelTest {
     }
 
     @Test
-    fun `cancellation is propagated without emitting a UI error`() = runTest {
+    fun `create cancellation after upload cleans image without UI error`() = runTest {
+        val imageUrl = "https://storage.example/image.jpg"
         val repository = FakeRecipeRepository().apply {
+            uploadRecipeImageResult = Result.success(imageUrl)
             beforeCreate = { throw CancellationException("cancel") }
         }
         val viewModel = createViewModel(repository)
@@ -100,17 +108,21 @@ class CreateRecipeViewModelTest {
             viewModel.uiEvent.collect { events += it }
         }
         fillValidForm(viewModel)
+        viewModel.onImageSelected("content://recipes/image")
 
         viewModel.createRecipe()
         advanceUntilIdle()
 
+        assertEquals(listOf(imageUrl), repository.deletedRecipeImageUrls)
         assertTrue(events.isEmpty())
         assertFalse(viewModel.isLoading.value)
     }
 
     @Test
-    fun `cancellation wrapped in result is not converted to UI error`() = runTest {
+    fun `create cancellation wrapped in result cleans image without UI error`() = runTest {
+        val imageUrl = "https://storage.example/image.jpg"
         val repository = FakeRecipeRepository().apply {
+            uploadRecipeImageResult = Result.success(imageUrl)
             createResult = Result.failure(CancellationException("cancel"))
         }
         val viewModel = createViewModel(repository)
@@ -119,10 +131,12 @@ class CreateRecipeViewModelTest {
             viewModel.uiEvent.collect { events += it }
         }
         fillValidForm(viewModel)
+        viewModel.onImageSelected("content://recipes/image")
 
         viewModel.createRecipe()
         advanceUntilIdle()
 
+        assertEquals(listOf(imageUrl), repository.deletedRecipeImageUrls)
         assertTrue(events.isEmpty())
         assertFalse(viewModel.isLoading.value)
     }
@@ -146,6 +160,9 @@ class CreateRecipeViewModelTest {
         assertEquals(CreateRecipeEvent.Created, event.await())
         assertEquals(uri, repository.uploadedImageUri)
         assertEquals(imageUrl, repository.created.single().imageUrl)
+        assertTrue(repository.deletedRecipeImageUrls.isEmpty())
+        assertEquals(RecipeFormState(), viewModel.formState.value)
+        assertFalse(viewModel.isLoading.value)
     }
 
     @Test
@@ -187,6 +204,148 @@ class CreateRecipeViewModelTest {
 
         assertTrue(events.isEmpty())
         assertTrue(repository.created.isEmpty())
+        assertFalse(viewModel.isLoading.value)
+    }
+
+    @Test
+    fun `create failure after upload cleans image and preserves form`() = runTest {
+        val imageUrl = "https://storage.example/image.jpg"
+        val repository = FakeRecipeRepository().apply {
+            uploadRecipeImageResult = Result.success(imageUrl)
+            createResult = Result.failure(IllegalStateException("write failed"))
+        }
+        val viewModel = createViewModel(repository)
+        fillValidForm(viewModel)
+        viewModel.onImageSelected("content://recipes/image")
+        val stateBeforeCreate = viewModel.formState.value
+
+        val event = async { viewModel.uiEvent.first() }
+        runCurrent()
+
+        viewModel.createRecipe()
+        advanceUntilIdle()
+
+        assertEquals(
+            CreateRecipeEvent.Error(RecipeFormUiError.PersistenceFailed),
+            event.await()
+        )
+        assertEquals(imageUrl, repository.created.single().imageUrl)
+        assertEquals(listOf(imageUrl), repository.deletedRecipeImageUrls)
+        assertEquals(stateBeforeCreate, viewModel.formState.value)
+        assertFalse(viewModel.isLoading.value)
+    }
+
+    @Test
+    fun `cleanup failure preserves persistence error and form`() = runTest {
+        val imageUrl = "https://storage.example/image.jpg"
+        val repository = FakeRecipeRepository().apply {
+            uploadRecipeImageResult = Result.success(imageUrl)
+            createResult = Result.failure(IllegalStateException("write failed"))
+            deleteRecipeImageResult =
+                Result.failure(IllegalStateException("delete failed"))
+        }
+        val viewModel = createViewModel(repository)
+        fillValidForm(viewModel)
+        viewModel.onImageSelected("content://recipes/image")
+        val stateBeforeCreate = viewModel.formState.value
+
+        val events = mutableListOf<CreateRecipeEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiEvent.collect { events += it }
+        }
+
+        viewModel.createRecipe()
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(CreateRecipeEvent.Error(RecipeFormUiError.PersistenceFailed)),
+            events
+        )
+        assertEquals(listOf(imageUrl), repository.deletedRecipeImageUrls)
+        assertEquals(stateBeforeCreate, viewModel.formState.value)
+        assertFalse(viewModel.isLoading.value)
+    }
+
+    @Test
+    fun `cancelled creation completes suspended image cleanup`() = runTest {
+        val imageUrl = "https://storage.example/image.jpg"
+        val cleanupGate = CompletableDeferred<Unit>()
+        lateinit var creationJob: Job
+        var cleanupFinished = false
+
+        val repository = FakeRecipeRepository().apply {
+            uploadRecipeImageResult = Result.success(imageUrl)
+            beforeCreate = {
+                creationJob = currentCoroutineContext().job
+                awaitCancellation()
+            }
+            beforeDeleteRecipeImage = {
+                cleanupGate.await()
+                cleanupFinished = true
+            }
+        }
+        val viewModel = createViewModel(repository)
+        val events = mutableListOf<CreateRecipeEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiEvent.collect { events += it }
+        }
+        fillValidForm(viewModel)
+        viewModel.onImageSelected("content://recipes/image")
+
+        viewModel.createRecipe()
+        runCurrent()
+
+        creationJob.cancel()
+        runCurrent()
+
+        try {
+            assertEquals(listOf(imageUrl), repository.deletedRecipeImageUrls)
+            assertFalse(cleanupFinished)
+            assertFalse(creationJob.isCompleted)
+            assertTrue(viewModel.isLoading.value)
+        } finally {
+            cleanupGate.complete(Unit)
+            advanceUntilIdle()
+        }
+
+        assertTrue(cleanupFinished)
+        assertTrue(creationJob.isCancelled)
+        assertTrue(creationJob.isCompleted)
+        assertTrue(events.isEmpty())
+        assertFalse(viewModel.isLoading.value)
+    }
+
+    @Test
+    fun `cleanup cancellation preserves original creation cancellation`() = runTest {
+        val imageUrl = "https://storage.example/image.jpg"
+        val originalCancellation = CancellationException("creation cancelled")
+        val cleanupCancellation = CancellationException("cleanup cancelled")
+        var completionCause: Throwable? = null
+
+        val repository = FakeRecipeRepository().apply {
+            uploadRecipeImageResult = Result.success(imageUrl)
+            deleteRecipeImageResult = Result.failure(cleanupCancellation)
+            beforeCreate = {
+                currentCoroutineContext().job.invokeOnCompletion {
+                    completionCause = it
+                }
+                throw originalCancellation
+            }
+        }
+        val viewModel = createViewModel(repository)
+        val events = mutableListOf<CreateRecipeEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiEvent.collect { events += it }
+        }
+        fillValidForm(viewModel)
+        viewModel.onImageSelected("content://recipes/image")
+
+        viewModel.createRecipe()
+        advanceUntilIdle()
+
+        assertSame(originalCancellation, completionCause)
+        assertEquals(listOf(imageUrl), repository.deletedRecipeImageUrls)
+        assertTrue(events.isEmpty())
         assertFalse(viewModel.isLoading.value)
     }
 

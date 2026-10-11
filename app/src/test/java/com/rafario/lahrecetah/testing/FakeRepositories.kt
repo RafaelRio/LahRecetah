@@ -51,6 +51,7 @@ class FakeRecipeRepository : RecipeRepository {
     var uploadedImageUri: String? = null
     var deleteRecipeImageResult: Result<Unit> = Result.success(Unit)
     val deletedRecipeImageUrls = mutableListOf<String>()
+    var beforeDeleteRecipeImage: suspend () -> Unit = {}
 
     override suspend fun createRecipe(recipe: Recipe): Result<Unit> {
         beforeCreate()
@@ -70,7 +71,9 @@ class FakeRecipeRepository : RecipeRepository {
 
     override suspend fun deleteRecipeImage(imageUrl: String): Result<Unit> {
         if (imageUrl.isBlank()) return Result.success(Unit)
+
         deletedRecipeImageUrls += imageUrl
+        beforeDeleteRecipeImage()
         return deleteRecipeImageResult
     }
 
@@ -79,6 +82,7 @@ class FakeRecipeRepository : RecipeRepository {
     override fun observeRecipesByUser(uid: String) = recipes
     override suspend fun updateRecipe(recipe: Recipe): Result<Unit> = error("Not used in this test")
     override suspend fun deleteRecipe(recipeId: String): Result<Unit> = error("Not used in this test")
+
 }
 
 class FakeSessionRepository : SessionRepository {

@@ -18,7 +18,9 @@ import com.rafario.lahrecetah.ui.recipe_form.RecipeFormValidationError
 import com.rafario.lahrecetah.ui.recipe_form.RecipeFormValidationResult
 import com.rafario.lahrecetah.ui.recipe_form.RecipeFormValidator
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class CreateRecipeViewModel @Inject constructor(
@@ -61,6 +63,8 @@ class CreateRecipeViewModel @Inject constructor(
         _isLoading.value = true
 
         viewModelScope.launch {
+            var uploadedImageUrl: String? = null
+            var originalCancellation: CancellationException? = null
             try {
                 val validation = RecipeFormValidator.validate(
                     title = state.title,
@@ -97,7 +101,9 @@ class CreateRecipeViewModel @Inject constructor(
                         return@launch
                     }
 
-                    uploadResult.getOrThrow()
+                    val uploadedUrl = uploadResult.getOrThrow()
+                    uploadedImageUrl = uploadedUrl
+                    uploadedUrl
                 } ?: ""
 
                 val result = createRecipeUseCase(
@@ -116,6 +122,7 @@ class CreateRecipeViewModel @Inject constructor(
 
                 when {
                     result.isSuccess -> {
+                        uploadedImageUrl = null
                         formStateHolder.reset()
                         _uiEvent.emit(CreateRecipeEvent.Created)
                     }
@@ -137,6 +144,7 @@ class CreateRecipeViewModel @Inject constructor(
                     }
                 }
             } catch (e: CancellationException) {
+                originalCancellation = e
                 throw e
             } catch (e: RecipeValidationException) {
                 _uiEvent.emit(
@@ -151,8 +159,28 @@ class CreateRecipeViewModel @Inject constructor(
                     CreateRecipeEvent.Error(RecipeFormUiError.Unexpected)
                 )
             } finally {
-                _isLoading.value = false
+                try {
+                    uploadedImageUrl?.let { imageUrl ->
+                        withContext(NonCancellable) {
+                            cleanupUploadedImage(imageUrl)
+                        }
+                    }
+                } catch (cleanupCancellation: CancellationException) {
+                    throw originalCancellation ?: cleanupCancellation
+                } finally {
+                    _isLoading.value = false
+                }
             }
+        }
+    }
+
+    private suspend fun cleanupUploadedImage(imageUrl: String) {
+        try {
+            recipeRepository.deleteRecipeImage(imageUrl).getOrThrow()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Un fallo de limpieza no debe sustituir al error original.
         }
     }
 }
