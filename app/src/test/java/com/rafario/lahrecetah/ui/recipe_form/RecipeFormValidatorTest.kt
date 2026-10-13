@@ -195,6 +195,40 @@ class RecipeFormValidatorTest {
         )
     }
 
+    @Test
+    fun `blank duration takes priority over blank title`() {
+        val result = RecipeFormValidator.validate(
+            title = "",
+            description = "Descripción",
+            ingredients = listOf("Ingrediente"),
+            steps = listOf("Paso"),
+            durationText = "   ",
+            difficulty = 3
+        )
+
+        assertInvalid(
+            result = result,
+            expectedError = RecipeFormValidationError.DurationRequired
+        )
+    }
+
+    @Test
+    fun `non numeric duration takes priority over blank title`() {
+        val result = RecipeFormValidator.validate(
+            title = "",
+            description = "Descripción",
+            ingredients = listOf("Ingrediente"),
+            steps = listOf("Paso"),
+            durationText = "abc",
+            difficulty = 3
+        )
+
+        assertInvalid(
+            result = result,
+            expectedError = RecipeFormValidationError.DurationNotInteger
+        )
+    }
+
     private fun validRecipe(
         durationText: String = "30", difficulty: Int = 3
     ): RecipeFormValidationResult {

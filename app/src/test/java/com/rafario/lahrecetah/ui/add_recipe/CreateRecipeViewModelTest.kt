@@ -1,7 +1,6 @@
 package com.rafario.lahrecetah.ui.add_recipe
 
 import com.rafario.lahrecetah.domain.usecase.recipes.CreateRecipeUseCase
-import com.rafario.lahrecetah.domain.validation.RecipeValidationError
 import com.rafario.lahrecetah.testing.FakeAuthRepository
 import com.rafario.lahrecetah.testing.FakeRecipeRepository
 import com.rafario.lahrecetah.testing.MainDispatcherRule
@@ -45,11 +44,7 @@ class CreateRecipeViewModelTest {
         advanceUntilIdle()
 
         assertEquals(
-            CreateRecipeEvent.Error(
-                RecipeFormUiError.Validation(
-                    RecipeFormValidationError.Domain(RecipeValidationError.TITLE)
-                )
-            ),
+            CreateRecipeEvent.Error(RecipeFormUiError.Validation(RecipeFormValidationError.DurationRequired)),
             event.await()
         )
         assertTrue(repository.created.isEmpty())

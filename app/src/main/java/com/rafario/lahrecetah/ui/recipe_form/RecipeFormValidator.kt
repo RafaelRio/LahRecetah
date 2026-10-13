@@ -31,32 +31,32 @@ object RecipeFormValidator {
         durationText: String,
         difficulty: Int
     ): RecipeFormValidationResult {
+        if (durationText.isBlank()) {
+            return RecipeFormValidationResult.Invalid(
+                RecipeFormValidationError.DurationRequired
+            )
+        }
+
         val durationMinutes = durationText.toIntOrNull()
+            ?: return RecipeFormValidationResult.Invalid(
+                RecipeFormValidationError.DurationNotInteger
+            )
+
         val domainError = RecipeValidator.validate(
             title,
             description,
             ingredients,
             steps,
-            durationMinutes ?: 0,
+            durationMinutes,
             difficulty
         )
 
         if (domainError != null) {
-            val error = if (
-                domainError == RecipeValidationError.DURATION &&
-                durationMinutes == null
-            ) {
-                if (durationText.isBlank()) {
-                    RecipeFormValidationError.DurationRequired
-                } else {
-                    RecipeFormValidationError.DurationNotInteger
-                }
-            } else {
+            return RecipeFormValidationResult.Invalid(
                 RecipeFormValidationError.Domain(domainError)
-            }
-            return RecipeFormValidationResult.Invalid(error)
+            )
         }
 
-        return RecipeFormValidationResult.Valid(requireNotNull(durationMinutes))
+        return RecipeFormValidationResult.Valid(durationMinutes)
     }
 }
