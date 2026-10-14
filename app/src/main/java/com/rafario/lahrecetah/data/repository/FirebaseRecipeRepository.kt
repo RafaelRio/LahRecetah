@@ -5,6 +5,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.rafario.lahrecetah.data.remote.firestore.RecipeFirestoreDataSource
 import com.rafario.lahrecetah.domain.model.Recipe
 import com.rafario.lahrecetah.domain.recipe.RecipeNotFoundException
+import com.rafario.lahrecetah.domain.recipe.RecipeUpdateCommittedCancellationException
 import com.rafario.lahrecetah.domain.repository.RecipeRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
@@ -67,9 +68,10 @@ class FirebaseRecipeRepository @Inject constructor(
                         oldImageUrl != recipe.imageUrl
 
             if (imageChanged) {
-                deleteRecipeImage(oldImageUrl).onFailure { e ->
-                    if (e is CancellationException) throw e
-                }
+                cleanupImageAfterConfirmedUpdate(
+                    imageUrl = oldImageUrl,
+                    deleteImage = ::deleteRecipeImage
+                )
             }
 
             Result.success(Unit)
@@ -128,5 +130,18 @@ class FirebaseRecipeRepository @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+}
+
+internal suspend fun cleanupImageAfterConfirmedUpdate(
+    imageUrl: String,
+    deleteImage: suspend (String) -> Result<Unit>
+) {
+    try {
+        deleteImage(imageUrl).getOrThrow()
+    } catch (e: CancellationException) {
+        throw RecipeUpdateCommittedCancellationException(e)
+    } catch (_: Exception) {
+        // Un fallo de limpieza no invalida el guardado confirmado.
     }
 }
