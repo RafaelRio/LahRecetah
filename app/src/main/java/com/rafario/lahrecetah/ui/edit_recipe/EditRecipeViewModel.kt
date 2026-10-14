@@ -7,6 +7,7 @@ import com.rafario.lahrecetah.domain.repository.RecipeRepository
 import com.rafario.lahrecetah.ui.recipe_form.RecipeFormStateHolder
 import com.rafario.lahrecetah.ui.recipe_form.RecipeFormUiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -22,6 +23,9 @@ class EditRecipeViewModel @Inject constructor(
 
     private var loadedRecipe: Recipe? = null
 
+    private var loadJob: Job? = null
+    private var loadGeneration = 0L
+
     private val formStateHolder = RecipeFormStateHolder()
     val formState = formStateHolder.state
 
@@ -35,16 +39,23 @@ class EditRecipeViewModel @Inject constructor(
     val uiEvent = _uiEvent.asSharedFlow()
 
     fun loadRecipe(recipeId: String) {
+        loadGeneration += 1
+        val currentGeneration = loadGeneration
+        loadJob?.cancel()
         _isReady.value = false
         loadedRecipe = null
         formStateHolder.reset()
         _isLoading.value = true
 
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             try {
                 val recipe = recipeRepository
                     .getRecipeById(recipeId)
                     .getOrThrow()
+
+                if (currentGeneration != loadGeneration) {
+                    return@launch
+                }
 
                 if (recipe == null) {
                     _uiEvent.emit(
@@ -59,11 +70,15 @@ class EditRecipeViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiEvent.emit(
-                    EditRecipeEvent.Error(RecipeFormUiError.Unexpected)
-                )
+                if (currentGeneration == loadGeneration) {
+                    _uiEvent.emit(
+                        EditRecipeEvent.Error(RecipeFormUiError.Unexpected)
+                    )
+                }
             } finally {
-                _isLoading.value = false
+                if (currentGeneration == loadGeneration) {
+                    _isLoading.value = false
+                }
             }
         }
     }

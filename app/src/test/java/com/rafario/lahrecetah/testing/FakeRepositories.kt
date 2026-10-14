@@ -44,6 +44,9 @@ class FakeRecipeRepository : RecipeRepository {
     val created = mutableListOf<Recipe>()
     var createResult: Result<Unit> = Result.success(Unit)
     var getRecipeByIdResult: Result<Recipe?> = Result.success(null)
+    var getRecipeByIdHandler: suspend (String) -> Result<Recipe?> = {
+        getRecipeByIdResult
+    }
     var requestedRecipeId: String? = null
     var beforeCreate: suspend () -> Unit = {}
     var uploadRecipeImageResult: Result<String> =
@@ -61,7 +64,7 @@ class FakeRecipeRepository : RecipeRepository {
 
     override suspend fun getRecipeById(recipeId: String): Result<Recipe?> {
         requestedRecipeId = recipeId
-        return getRecipeByIdResult
+        return getRecipeByIdHandler(recipeId)
     }
 
     override suspend fun uploadRecipeImage(uri: String): Result<String> {
