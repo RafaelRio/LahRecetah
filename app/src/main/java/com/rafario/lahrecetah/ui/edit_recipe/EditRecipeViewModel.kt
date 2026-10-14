@@ -4,16 +4,25 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rafario.lahrecetah.domain.model.Recipe
 import com.rafario.lahrecetah.domain.model.RecipeCategory
+import com.rafario.lahrecetah.domain.model.normalized
+import com.rafario.lahrecetah.domain.recipe.RecipeNotFoundException
+import com.rafario.lahrecetah.domain.recipe.RecipeUpdateCommittedCancellationException
 import com.rafario.lahrecetah.domain.repository.RecipeRepository
 import com.rafario.lahrecetah.ui.recipe_form.RecipeFormStateHolder
 import com.rafario.lahrecetah.ui.recipe_form.RecipeFormUiError
+import com.rafario.lahrecetah.ui.recipe_form.RecipeFormValidationResult
+import com.rafario.lahrecetah.ui.recipe_form.RecipeFormValidator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -26,6 +35,7 @@ class EditRecipeViewModel @Inject constructor(
 
     private var loadJob: Job? = null
     private var loadGeneration = 0L
+    private var isSaving = false
 
     private val formStateHolder = RecipeFormStateHolder()
     val formState = formStateHolder.state
@@ -54,6 +64,145 @@ class EditRecipeViewModel @Inject constructor(
     fun clearStepFocus() = formStateHolder.clearStepFocus()
     fun onImageSelected(uri: String) = formStateHolder.onImageSelected(uri)
     fun removeImage() = formStateHolder.removeImage()
+
+    fun saveRecipe() {
+        if (_isLoading.value || !_isReady.value) return
+
+        val originalRecipe = loadedRecipe ?: return
+        val state = formStateHolder.state.value
+        val currentGeneration = loadGeneration
+
+        isSaving = true
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            var uploadedImageUrl: String? = null
+            var updateOutcomeUnknown = false
+            var originalCancellation: CancellationException? = null
+            try {
+                val validation = RecipeFormValidator.validate(
+                    title = state.title,
+                    description = state.description,
+                    ingredients = state.ingredients,
+                    steps = state.steps,
+                    durationText = state.durationText,
+                    difficulty = state.difficulty
+                )
+
+                val durationMinutes = when (validation) {
+                    is RecipeFormValidationResult.Invalid -> {
+                        if (currentGeneration == loadGeneration) {
+                            _uiEvent.emit(
+                                EditRecipeEvent.Error(
+                                    RecipeFormUiError.Validation(validation.error)
+                                )
+                            )
+                        }
+                        return@launch
+                    }
+
+                    is RecipeFormValidationResult.Valid -> validation.durationMinutes
+                }
+
+                val imageUrl = state.selectedLocalImageUri?.let { uri ->
+                    val uploadResult = recipeRepository.uploadRecipeImage(uri)
+                    val uploadFailure = uploadResult.exceptionOrNull()
+
+                    if (uploadFailure is CancellationException) throw uploadFailure
+
+                    if (uploadFailure != null) {
+                        if (currentGeneration == loadGeneration) {
+                            _uiEvent.emit(
+                                EditRecipeEvent.Error(RecipeFormUiError.ImageUploadFailed)
+                            )
+                        }
+                        return@launch
+                    }
+
+                    val uploadedUrl = uploadResult.getOrThrow()
+                    uploadedImageUrl = uploadedUrl
+                    uploadedUrl
+                } ?: state.existingImageUrl.orEmpty()
+
+                val updatedRecipe = originalRecipe.copy(
+                    title = state.title,
+                    description = state.description,
+                    ingredients = state.ingredients,
+                    steps = state.steps,
+                    category = state.category,
+                    durationMinutes = durationMinutes,
+                    difficulty = state.difficulty,
+                    imageUrl = imageUrl
+                ).normalized()
+
+                currentCoroutineContext().ensureActive()
+
+                updateOutcomeUnknown = true
+                val updateResult = recipeRepository.updateRecipe(updatedRecipe)
+                val updateFailure = updateResult.exceptionOrNull()
+
+                if (updateFailure is CancellationException) throw updateFailure
+
+                updateOutcomeUnknown = false
+
+                if (updateResult.isSuccess) {
+                    uploadedImageUrl = null
+
+                    if (currentGeneration == loadGeneration) {
+                        loadedRecipe = updatedRecipe
+                        formStateHolder.populateFrom(updatedRecipe)
+                        _uiEvent.emit(EditRecipeEvent.Updated)
+                    }
+                } else if (currentGeneration == loadGeneration) {
+                    val error = when (updateFailure) {
+                        is RecipeNotFoundException -> RecipeFormUiError.RecipeNotFound
+                        else -> RecipeFormUiError.PersistenceFailed
+                    }
+
+                    _uiEvent.emit(EditRecipeEvent.Error(error))
+                }
+            } catch (e: RecipeUpdateCommittedCancellationException) {
+                uploadedImageUrl = null
+                updateOutcomeUnknown = false
+                originalCancellation = e
+                throw e
+            } catch (e: CancellationException) {
+                originalCancellation = e
+                throw e
+            } catch (e: Exception) {
+                if (currentGeneration == loadGeneration) {
+                    _uiEvent.emit(
+                        EditRecipeEvent.Error(RecipeFormUiError.Unexpected)
+                    )
+                }
+            } finally {
+                try {
+                    if (!updateOutcomeUnknown) {
+                        uploadedImageUrl?.let { imageUrl ->
+                            withContext(NonCancellable) {
+                                cleanupUploadedImage(imageUrl)
+                            }
+                        }
+                    }
+                } catch (cleanupCancellation: CancellationException) {
+                    throw originalCancellation ?: cleanupCancellation
+                } finally {
+                    isSaving = false
+                    _isLoading.value = loadJob?.isActive == true
+                }
+            }
+        }
+    }
+
+    private suspend fun cleanupUploadedImage(imageUrl: String) {
+        try {
+            recipeRepository.deleteRecipeImage(imageUrl).getOrThrow()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Un fallo de limpieza no debe sustituir al error original.
+        }
+    }
 
     fun loadRecipe(recipeId: String) {
         loadGeneration += 1
@@ -94,7 +243,7 @@ class EditRecipeViewModel @Inject constructor(
                 }
             } finally {
                 if (currentGeneration == loadGeneration) {
-                    _isLoading.value = false
+                    _isLoading.value = isSaving
                 }
             }
         }
@@ -102,5 +251,6 @@ class EditRecipeViewModel @Inject constructor(
 }
 
 sealed interface EditRecipeEvent {
+    data object Updated : EditRecipeEvent
     data class Error(val error: RecipeFormUiError) : EditRecipeEvent
 }
