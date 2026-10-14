@@ -303,4 +303,59 @@ class EditRecipeViewModelTest {
         assertTrue(viewModel.isReady.value)
         assertFalse(viewModel.isLoading.value)
     }
+
+    @Test
+    fun `loading another recipe discards previous draft and local image`() = runTest {
+        val firstRecipe = Recipe(
+            id = "first",
+            title = "Primera receta",
+            imageUrl = "https://example.com/first.jpg"
+        )
+        val secondRecipe = Recipe(
+            id = "second",
+            title = "Segunda receta",
+            durationMinutes = 25,
+            imageUrl = "https://example.com/second.jpg"
+        )
+        val repository = FakeRecipeRepository().apply {
+            getRecipeByIdResult = Result.success(firstRecipe)
+        }
+        val viewModel = EditRecipeViewModel(repository)
+
+        viewModel.loadRecipe(firstRecipe.id)
+        advanceUntilIdle()
+        val originalState = viewModel.formState.value
+
+        viewModel.onTitleChanged("Título editado")
+        viewModel.onImageSelected("content://recipes/draft")
+
+        assertEquals(
+            originalState.copy(
+                title = "Título editado",
+                selectedLocalImageUri = "content://recipes/draft"
+            ),
+            viewModel.formState.value
+        )
+
+        repository.getRecipeByIdResult = Result.success(secondRecipe)
+        viewModel.loadRecipe(secondRecipe.id)
+
+        assertEquals(RecipeFormState(), viewModel.formState.value)
+        assertFalse(viewModel.isReady.value)
+        assertTrue(viewModel.isLoading.value)
+
+        advanceUntilIdle()
+
+        assertEquals(
+            RecipeFormState(
+                title = secondRecipe.title,
+                durationText = "25",
+                difficulty = 1,
+                existingImageUrl = secondRecipe.imageUrl
+            ),
+            viewModel.formState.value
+        )
+        assertTrue(viewModel.isReady.value)
+        assertFalse(viewModel.isLoading.value)
+    }
 }

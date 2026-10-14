@@ -3,6 +3,7 @@ package com.rafario.lahrecetah.ui.edit_recipe
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rafario.lahrecetah.domain.model.Recipe
+import com.rafario.lahrecetah.domain.model.RecipeCategory
 import com.rafario.lahrecetah.domain.repository.RecipeRepository
 import com.rafario.lahrecetah.ui.recipe_form.RecipeFormStateHolder
 import com.rafario.lahrecetah.ui.recipe_form.RecipeFormUiError
@@ -37,6 +38,22 @@ class EditRecipeViewModel @Inject constructor(
 
     private val _uiEvent = MutableSharedFlow<EditRecipeEvent>()
     val uiEvent = _uiEvent.asSharedFlow()
+
+    fun onTitleChanged(value: String) = formStateHolder.onTitleChanged(value)
+    fun onDescriptionChanged(value: String) = formStateHolder.onDescriptionChanged(value)
+    fun onDurationChanged(value: String) = formStateHolder.onDurationChanged(value)
+    fun onCategoryChanged(value: RecipeCategory) = formStateHolder.onCategoryChanged(value)
+    fun onDifficultyChanged(value: Int) = formStateHolder.onDifficultyChanged(value)
+    fun addIngredientRow() = formStateHolder.addIngredientRow()
+    fun updateIngredient(index: Int, value: String) = formStateHolder.updateIngredient(index, value)
+    fun removeIngredient(index: Int) = formStateHolder.removeIngredient(index)
+    fun clearIngredientFocus() = formStateHolder.clearIngredientFocus()
+    fun addStepRow() = formStateHolder.addStepRow()
+    fun updateStep(index: Int, value: String) = formStateHolder.updateStep(index, value)
+    fun removeStep(index: Int) = formStateHolder.removeStep(index)
+    fun clearStepFocus() = formStateHolder.clearStepFocus()
+    fun onImageSelected(uri: String) = formStateHolder.onImageSelected(uri)
+    fun removeImage() = formStateHolder.removeImage()
 
     fun loadRecipe(recipeId: String) {
         loadGeneration += 1
