@@ -1,7 +1,8 @@
 package com.rafario.lahrecetah.ui.recipe_form
 
 import com.rafario.lahrecetah.domain.validation.RecipeValidationError
-import org.junit.Assert
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RecipeFormValidatorTest {
@@ -17,10 +18,10 @@ class RecipeFormValidatorTest {
             difficulty = 3
         )
 
-        Assert.assertTrue(result is RecipeFormValidationResult.Valid)
+        assertTrue(result is RecipeFormValidationResult.Valid)
 
         val validResult = result as RecipeFormValidationResult.Valid
-        Assert.assertEquals(45, validResult.durationMinutes)
+        assertEquals(45, validResult.durationMinutes)
     }
 
     @Test
@@ -245,9 +246,9 @@ class RecipeFormValidatorTest {
     private fun assertInvalid(
         result: RecipeFormValidationResult, expectedError: RecipeFormValidationError
     ) {
-        Assert.assertTrue(result is RecipeFormValidationResult.Invalid)
+        assertTrue(result is RecipeFormValidationResult.Invalid)
 
         val invalidResult = result as RecipeFormValidationResult.Invalid
-        Assert.assertEquals(expectedError, invalidResult.error)
+        assertEquals(expectedError, invalidResult.error)
     }
 }
