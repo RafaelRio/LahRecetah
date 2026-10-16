@@ -72,10 +72,10 @@ fun RecipeFormContent(
     onUpdateStep: (Int, String) -> Unit,
     onRemoveStep: (Int) -> Unit,
     onStepFocusHandled: () -> Unit,
-    modifier: Modifier = Modifier,
-    previewImage: String? = state.selectedLocalImageUri ?: state.existingImageUrl
+    modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+    val previewImage = state.selectedLocalImageUri ?: state.existingImageUrl
 
     Box(
         modifier = modifier
