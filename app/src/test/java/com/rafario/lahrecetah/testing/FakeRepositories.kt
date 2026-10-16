@@ -15,6 +15,9 @@ class FakeAuthRepository : AuthRepository {
     var user: AuthUser? = AuthUser("signed-in-uid", "cook@example.com", "Chef")
     var loginResult: Result<AuthUser> = Result.success(requireNotNull(user))
     var beforeLogin: suspend () -> Unit = {}
+    var registerResult: Result<AuthUser> = Result.success(requireNotNull(user))
+    var registerCalls = 0
+    var logoutCalls = 0
     var loginCalls = 0
     var googleCalls = 0
     var receivedToken: String? = null
@@ -32,9 +35,15 @@ class FakeAuthRepository : AuthRepository {
         return loginResult
     }
     override fun getCurrentUser() = user
-    override fun logout() { user = null }
-    override suspend fun register(name: String, email: String, password: String): Result<AuthUser> =
-        error("Not used in this test")
+
+    override fun logout() {
+        logoutCalls++
+        user = null
+    }
+    override suspend fun register(name: String, email: String, password: String): Result<AuthUser> {
+        registerCalls++
+        return registerResult
+    }
     override suspend fun updateDisplayName(newName: String) = Unit
 }
 
@@ -112,8 +121,15 @@ class FakeSessionRepository : SessionRepository {
 
 class FakeUserRepository : UserRepository {
     val profiles = mutableListOf<UserProfile>()
+    var createProfileFailure: Exception? = null
+
     override suspend fun userExists(email: String) = profiles.any { it.email == email }
-    override suspend fun createUserProfile(profile: UserProfile) { profiles += profile }
+
+    override suspend fun createUserProfile(profile: UserProfile) {
+        createProfileFailure?.let { throw it }
+        profiles += profile
+    }
+
     override suspend fun getUserProfile(email: String) = profiles.find { it.email == email }
     override suspend fun updateUserName(email: String, newName: String) = Unit
 }

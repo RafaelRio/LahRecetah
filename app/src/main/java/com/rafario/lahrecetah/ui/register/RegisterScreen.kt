@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rafario.lahrecetah.R
+import com.rafario.lahrecetah.ui.auth.toStringRes
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineTextField
 
 @Composable
@@ -56,7 +57,7 @@ fun RegisterScreen(
 
                 is RegisterEvent.Error -> {
                     snackbarHostState.showSnackbar(
-                        event.message ?: context.getString(R.string.unknown_error)
+                        context.getString(event.error.toStringRes())
                     )
                 }
             }
@@ -116,8 +117,7 @@ fun RegisterScreen(
         }
 
         SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter)
+            hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter)
         )
 
         if (uiState.isLoading) {
@@ -126,8 +126,7 @@ fun RegisterScreen(
                     .fillMaxSize()
                     .background(
                         Color.Black.copy(alpha = 0.3f)
-                    ),
-                contentAlignment = Alignment.Center
+                    ), contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }

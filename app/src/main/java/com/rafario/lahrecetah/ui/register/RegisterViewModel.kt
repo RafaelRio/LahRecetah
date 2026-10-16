@@ -2,9 +2,9 @@ package com.rafario.lahrecetah.ui.register
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rafario.lahrecetah.domain.auth.AuthException
 import com.rafario.lahrecetah.domain.usecase.users.RegisterUserUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
@@ -49,12 +50,8 @@ class RegisterViewModel @Inject constructor(
             return
         }
 
-        if (
-            state.name.isBlank() ||
-            state.email.isBlank() ||
-            state.password.isBlank()
-        ) {
-            emitError("Todos los campos son obligatorios")
+        if (state.name.isBlank() || state.email.isBlank() || state.password.isBlank()) {
+            emitError(RegisterUiError.MissingFields)
             return
         }
 
@@ -65,9 +62,7 @@ class RegisterViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val result = registerUserUseCase(
-                    name = state.name.trim(),
-                    email = state.email.trim(),
-                    password = state.password
+                    name = state.name.trim(), email = state.email.trim(), password = state.password
                 )
 
                 val failure = result.exceptionOrNull()
@@ -79,21 +74,17 @@ class RegisterViewModel @Inject constructor(
                         RegisterEvent.Success
                     )
                 } else {
-                    _registerEvent.emit(
-                        RegisterEvent.Error(
-                            result.exceptionOrNull()?.message
-                                ?: "No se pudo crear la cuenta"
-                        )
-                    )
+                    val error = when (failure) {
+                        is AuthException -> RegisterUiError.Auth(failure.error)
+                        else -> RegisterUiError.Unexpected
+                    }
+
+                    _registerEvent.emit(RegisterEvent.Error(error))
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _registerEvent.emit(
-                    RegisterEvent.Error(
-                        e.message ?: "Error inesperado durante el registro"
-                    )
-                )
+                _registerEvent.emit(RegisterEvent.Error(RegisterUiError.Unexpected))
             } finally {
                 _uiState.update {
                     it.copy(isLoading = false)
@@ -105,17 +96,15 @@ class RegisterViewModel @Inject constructor(
     private fun clearFields() {
         _uiState.update {
             it.copy(
-                name = "",
-                email = "",
-                password = ""
+                name = "", email = "", password = ""
             )
         }
     }
 
-    private fun emitError(message: String) {
+    private fun emitError(error: RegisterUiError) {
         viewModelScope.launch {
             _registerEvent.emit(
-                RegisterEvent.Error(message)
+                RegisterEvent.Error(error)
             )
         }
     }
@@ -132,6 +121,6 @@ sealed class RegisterEvent {
     data object Success : RegisterEvent()
 
     data class Error(
-        val message: String?
+        val error: RegisterUiError
     ) : RegisterEvent()
 }
