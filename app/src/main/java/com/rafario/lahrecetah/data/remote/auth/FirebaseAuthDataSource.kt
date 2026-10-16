@@ -18,7 +18,7 @@ class FirebaseAuthDataSource @Inject constructor(
                 Result.success(user)
             } else {
                 firebaseAuth.signOut()
-                Result.failure(Exception("Email no verificado"))
+                Result.failure(EmailNotVerifiedException())
             }
         } catch (e: CancellationException) {
             throw e

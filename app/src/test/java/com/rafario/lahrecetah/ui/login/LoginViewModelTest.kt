@@ -1,5 +1,7 @@
 package com.rafario.lahrecetah.ui.login
 
+import com.rafario.lahrecetah.domain.auth.AuthError
+import com.rafario.lahrecetah.domain.auth.AuthException
 import com.rafario.lahrecetah.domain.usecase.users.GoogleLoginUseCase
 import com.rafario.lahrecetah.testing.FakeAuthRepository
 import com.rafario.lahrecetah.testing.FakeSessionRepository
@@ -49,7 +51,10 @@ class LoginViewModelTest {
             if (emailEmpty) vm.onEmailChanged(" ") else vm.onPasswordChanged("")
             vm.login()
             runCurrent()
-            assertTrue(events.single() is LoginEvent.Error)
+            assertEquals(
+                listOf(LoginEvent.Error(LoginUiError.MissingCredentials)),
+                events
+            )
             assertFalse(vm.uiState.value.isLoading)
         }
         assertEquals(0, auth.loginCalls)
@@ -100,7 +105,9 @@ class LoginViewModelTest {
             val events = events(vm)
             if (google) vm.loginWithGoogle("token") else vm.login()
             runCurrent()
-            assertEquals(listOf(LoginEvent.Error("login failed")), events)
+            assertEquals(
+                listOf(LoginEvent.Error(LoginUiError.Unexpected)),
+                events)
             assertFalse(vm.uiState.value.isLoading)
         }
         assertTrue(session.savedValues.isEmpty())
@@ -113,7 +120,9 @@ class LoginViewModelTest {
         val events = events(vm)
         vm.loginWithGoogle("token")
         runCurrent()
-        assertEquals(listOf(LoginEvent.Error("storage failed")), events)
+        assertEquals(
+            listOf(LoginEvent.Error(LoginUiError.SessionPersistence)),
+            events)
         assertEquals(listOf(true), session.savedValues)
         assertFalse(vm.uiState.value.isLoading)
     }
@@ -180,4 +189,39 @@ class LoginViewModelTest {
         assertFalse(vm.uiState.value.isLoading)
     }
 
+    @Test
+    fun `email auth failure emits typed auth error`() = runTest {
+        val cause = IllegalStateException("network")
+        auth.loginResult = Result.failure(AuthException(AuthError.NETWORK, cause))
+
+        val vm = viewModel()
+        val events = events(vm)
+
+        vm.login()
+        runCurrent()
+
+        assertEquals(
+            listOf(LoginEvent.Error(LoginUiError.Auth(AuthError.NETWORK))),
+            events
+        )
+        assertFalse(vm.uiState.value.isLoading)
+    }
+
+    @Test
+    fun `google auth failure emits typed auth error`() = runTest {
+        val cause = IllegalStateException("network")
+        auth.loginResult = Result.failure(AuthException(AuthError.NETWORK, cause))
+
+        val vm = viewModel()
+        val events = events(vm)
+
+        vm.loginWithGoogle("token")
+        runCurrent()
+
+        assertEquals(
+            listOf(LoginEvent.Error(LoginUiError.Auth(AuthError.NETWORK))),
+            events
+        )
+        assertFalse(vm.uiState.value.isLoading)
+    }
 }

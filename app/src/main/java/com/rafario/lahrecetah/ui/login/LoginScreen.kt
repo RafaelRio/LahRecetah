@@ -62,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.rafario.lahrecetah.R
+import com.rafario.lahrecetah.ui.auth.toStringRes
 import com.rafario.lahrecetah.ui.custom_views.CustomOutlineTextField
 import com.rafario.lahrecetah.ui.register.RegisterScreen
 import com.rafario.lahrecetah.ui.theme.ModalBackground
@@ -166,7 +167,7 @@ fun LoginScreen(
 
                 is LoginEvent.Error -> {
                     snackbarHostState.showSnackbar(
-                        event.message ?: context.getString(R.string.error)
+                        context.getString(event.error.toStringRes())
                     )
                 }
             }

@@ -2,6 +2,7 @@ package com.rafario.lahrecetah.ui.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rafario.lahrecetah.domain.auth.AuthException
 import com.rafario.lahrecetah.domain.repository.AuthRepository
 import com.rafario.lahrecetah.domain.repository.SessionRepository
 import com.rafario.lahrecetah.domain.usecase.users.GoogleLoginUseCase
@@ -54,7 +55,7 @@ class LoginViewModel @Inject constructor(
         }
 
         if (state.email.isBlank() || state.password.isBlank()) {
-            emitError("Email y contraseña obligatorios")
+            emitError(LoginUiError.MissingCredentials)
             return
         }
 
@@ -73,25 +74,28 @@ class LoginViewModel @Inject constructor(
                 if (failure is CancellationException) throw failure
 
                 if (result.isSuccess) {
-                    sessionRepository.saveRememberMe(state.rememberMe)
+                    try {
+                        sessionRepository.saveRememberMe(state.rememberMe)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        _loginEvent.emit(LoginEvent.Error(LoginUiError.SessionPersistence))
+                        return@launch
+                    }
 
                     _loginEvent.emit(LoginEvent.Success)
                 } else {
-                    _loginEvent.emit(
-                        LoginEvent.Error(
-                            failure?.message
-                                ?: "No se pudo iniciar sesión"
-                        )
-                    )
+                    val error = when (failure) {
+                        is AuthException -> LoginUiError.Auth(failure.error)
+                        else -> LoginUiError.Unexpected
+                    }
+
+                    _loginEvent.emit(LoginEvent.Error(error))
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _loginEvent.emit(
-                    LoginEvent.Error(
-                        e.message ?: "Error inesperado al iniciar sesión"
-                    )
-                )
+                _loginEvent.emit(LoginEvent.Error(LoginUiError.Unexpected))
             } finally {
                 _uiState.update {
                     it.copy(isLoading = false)
@@ -117,25 +121,27 @@ class LoginViewModel @Inject constructor(
                 if (failure is CancellationException) throw failure
 
                 if (result.isSuccess) {
-                    sessionRepository.saveRememberMe(true)
+                    try {
+                        sessionRepository.saveRememberMe(true)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        _loginEvent.emit(LoginEvent.Error(LoginUiError.SessionPersistence))
+                        return@launch
+                    }
 
                     _loginEvent.emit(LoginEvent.Success)
                 } else {
-                    _loginEvent.emit(
-                        LoginEvent.Error(
-                            failure?.message
-                                ?: "No se pudo iniciar sesión con Google"
-                        )
-                    )
+                    val error = when (failure) {
+                        is AuthException -> LoginUiError.Auth(failure.error)
+                        else -> LoginUiError.Unexpected
+                    }
+                    _loginEvent.emit(LoginEvent.Error(error))
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _loginEvent.emit(
-                    LoginEvent.Error(
-                        e.message ?: "Error inesperado al iniciar sesión con Google"
-                    )
-                )
+                _loginEvent.emit(LoginEvent.Error(LoginUiError.Unexpected))
             } finally {
                 _uiState.update {
                     it.copy(isLoading = false)
@@ -144,10 +150,10 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    private fun emitError(message: String) {
+    private fun emitError(error: LoginUiError) {
         viewModelScope.launch {
             _loginEvent.emit(
-                LoginEvent.Error(message)
+                LoginEvent.Error(error)
             )
         }
     }
@@ -164,6 +170,6 @@ sealed class LoginEvent {
     data object Success : LoginEvent()
 
     data class Error(
-        val message: String?
+        val error: LoginUiError
     ) : LoginEvent()
 }
