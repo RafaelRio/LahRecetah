@@ -94,4 +94,16 @@
     <string name="recipe_not_found">La receta ya no existe o no está disponible</string>
     <string name="recipe_image_upload_failed">No se ha podido subir la imagen. Inténtalo de nuevo.</string>
     <string name="recipe_persistence_failed">No se ha podido guardar la receta. Inténtalo de nuevo.</string>
+
+    <string name="auth_invalid_credentials">No se pudo verificar el acceso. Comprueba tus credenciales.</string>
+    <string name="auth_email_not_verified">Verifica tu correo electrónico antes de iniciar sesión.</string>
+    <string name="auth_network_error">No se pudo conectar. Comprueba tu conexión e inténtalo de nuevo.</string>
+    <string name="auth_user_disabled">Esta cuenta está deshabilitada.</string>
+    <string name="auth_email_already_in_use">Este correo electrónico ya está registrado.</string>
+    <string name="auth_weak_password">La contraseña es demasiado débil. Elige una más segura.</string>
+    <string name="auth_unknown_error">No se pudo completar la autenticación. Inténtalo de nuevo.</string>
+
+    <string name="login_missing_credentials">Introduce el correo electrónico y la contraseña.</string>
+    <string name="login_session_persistence_error">No se pudo guardar la preferencia de sesión. Inténtalo de nuevo.</string>
+    <string name="register_missing_fields">Completa todos los campos obligatorios.</string>
 </resources>
