@@ -261,119 +261,6 @@ class AddRecipeViewModel @Inject constructor(
         }
     }
 
-    fun saveEdits() {
-        val state = _uiState.value
-
-        if (state.isLoading) {
-            return
-        }
-
-        if (!state.isEditReady) {
-            emitError("La receta no está disponible para editar")
-            return
-        }
-
-        val recipeId = state.editingRecipeId
-
-        if (recipeId == null) {
-            emitError("No se encontró la receta a editar")
-            return
-        }
-
-        _uiState.update {
-            it.copy(isLoading = true)
-        }
-
-        viewModelScope.launch {
-            try {
-                val validation = RecipeFormValidator.validate(
-                    title = state.title,
-                    description = state.description,
-                    ingredients = state.ingredients,
-                    steps = state.steps,
-                    durationText = state.durationText,
-                    difficulty = state.difficulty
-                )
-
-                val durationMinutes = when (validation) {
-                    is RecipeFormValidationResult.Invalid -> {
-                        _uiEvent.emit(AddRecipeEvent.ValidationError(validation.error))
-                        return@launch
-                    }
-
-                    is RecipeFormValidationResult.Valid -> validation.durationMinutes
-                }
-
-                val finalImageUrl = when (val uriString = state.localImageUri) {
-                    null -> ""
-
-                    else -> {
-                        if (uriString.startsWith("http")) {
-                            uriString
-                        } else {
-                            recipeRepository.uploadRecipeImage(
-                                uriString
-                            ).getOrThrow()
-                        }
-                    }
-                }
-
-                val updatedRecipe = Recipe(
-                    id = recipeId,
-                    title = state.title,
-                    description = state.description,
-                    ingredients = state.ingredients,
-                    steps = state.steps,
-                    durationMinutes = durationMinutes,
-                    category = state.category,
-                    difficulty = state.difficulty,
-                    imageUrl = finalImageUrl
-                ).normalized()
-
-                val result = recipeRepository.updateRecipe(updatedRecipe)
-
-                val failure = result.exceptionOrNull()
-                if (failure is CancellationException) throw failure
-
-                if (failure is RecipeValidationException) {
-                    _uiEvent.emit(
-                        AddRecipeEvent.ValidationError(
-                            RecipeFormValidationError.Domain(failure.reason)
-                        )
-                    )
-                } else {
-                    _uiEvent.emit(
-                        AddRecipeEvent.Error(failure?.message ?: "Error desconocido")
-                    )
-                }
-
-                if (result.isSuccess) {
-                    exitEditingMode()
-                    _uiEvent.emit(AddRecipeEvent.Updated)
-                } else {
-                    _uiEvent.emit(
-                        AddRecipeEvent.Error(
-                            result.exceptionOrNull()?.message
-                                ?: "Error actualizando receta"
-                        )
-                    )
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _uiEvent.emit(
-                    AddRecipeEvent.Error(
-                        e.message ?: "Error inesperado"
-                    )
-                )
-            } finally {
-                _uiState.update {
-                    it.copy(isLoading = false)
-                }
-            }
-        }
-    }
-
     fun createRecipe() {
         val state = _uiState.value
 
@@ -485,17 +372,10 @@ class AddRecipeViewModel @Inject constructor(
             )
         }
     }
-
-    private fun emitError(message: String) {
-        viewModelScope.launch {
-            _uiEvent.emit(AddRecipeEvent.Error(message))
-        }
-    }
 }
 
 sealed class AddRecipeEvent {
     data object Created : AddRecipeEvent()
-    data object Updated : AddRecipeEvent()
     data class Error(val message: String?) : AddRecipeEvent()
     data class ValidationError(val error: RecipeFormValidationError) : AddRecipeEvent()
 }

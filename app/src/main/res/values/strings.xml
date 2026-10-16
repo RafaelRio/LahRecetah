@@ -90,4 +90,8 @@
     <string name="recipe_validation_difficulty">La dificultad debe estar entre 1 y 5</string>
     <string name="recipe_validation_duration_required">La duración es obligatoria</string>
     <string name="recipe_validation_duration_not_integer">La duración debe ser un número entero</string>
+
+    <string name="recipe_not_found">La receta ya no existe o no está disponible</string>
+    <string name="recipe_image_upload_failed">No se ha podido subir la imagen. Inténtalo de nuevo.</string>
+    <string name="recipe_persistence_failed">No se ha podido guardar la receta. Inténtalo de nuevo.</string>
 </resources>
