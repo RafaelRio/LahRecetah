@@ -21,8 +21,9 @@ Se mantiene un único módulo Android, `app`.
 3. Habilita los proveedores Email/contraseña y Google en Authentication.
 4. Ejecuta `./gradlew :app:signingReport` y registra las huellas SHA-1 y SHA-256
    de tu certificado en la configuración de la aplicación Firebase.
-5. Crea Firestore y Storage y configura sus reglas e índices para permitir las
-   operaciones correspondientes a cada usuario.
+5. Crea Firestore y Storage. Las reglas de Firestore están versionadas en
+   `firestore.rules`; consulta «Seguridad de Firebase» para desplegarlas. Configura
+   también los índices que necesite el proyecto.
 6. Descarga tu propio `google-services.json` actualizado y colócalo en
    `app/google-services.json`. **Cada desarrollador debe proporcionar el suyo**;
    Git ignora este archivo.
@@ -81,8 +82,32 @@ se construyen únicamente en data.
   recorte. Se conservan ese flujo y sus permisos.
 
 Estos cambios no requieren migraciones, nuevas colecciones ni cambios del esquema
-Firebase. Las reglas e índices del backend siguen gestionándose en Firebase.
-Las recetas ya guardadas no se reescriben automáticamente.
+Firebase. Las recetas ya guardadas no se reescriben automáticamente.
+
+## Seguridad de Firebase
+
+Las reglas de Firestore están versionadas en `firestore.rules` y vinculadas desde
+`firebase.json`. Exigen autenticación para leer recetas y limitan las escrituras
+de recetas al UID propietario. Los perfiles solo se pueden crear con el UID y el
+email autenticados; la lectura permite consultar el perfil propio por UID o por
+el email de la cuenta, necesario para comprobar el primer acceso con Google.
+Las consultas del cliente facilitan la UX y reducen datos descargados; las reglas
+son las que autorizan realmente cada operación.
+
+Para desplegar las reglas, autentícate con Firebase CLI, selecciona tu proyecto
+Firebase y ejecuta desde la raíz del repositorio:
+
+```bash
+firebase deploy --only firestore:rules --project <project-id>
+```
+
+El despliegue es una acción manual del propietario del proyecto; no se ejecuta
+desde Gradle ni desde la aplicación.
+
+Las reglas de Firebase Storage no están incluidas en este cambio. Antes de
+restringirlas, habrá que migrar las imágenes a rutas que incluyan el UID, por
+ejemplo `recipes/{uid}/{uuid}.jpg`, y desplegar reglas de Storage acordes con esa
+estructura.
 
 ## Testing y calidad
 
