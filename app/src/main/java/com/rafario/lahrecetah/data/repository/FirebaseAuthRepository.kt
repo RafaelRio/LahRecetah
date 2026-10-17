@@ -53,13 +53,20 @@ class FirebaseAuthRepository @Inject constructor(
         email: String,
         password: String
     ): Result<AuthUser> {
-        return dataSource.register(name, email, password)
-            .map { uid ->
+        return try {
+            val uid = dataSource.register(name, email, password).getOrThrow()
+
+            Result.success(
                 AuthUser(
                     uid = uid,
                     email = email
                 )
-            }
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e.toAuthException())
+        }
     }
 
     override fun logout() = dataSource.logout()
