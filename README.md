@@ -48,18 +48,27 @@ MVVM con separación por capas y casos de uso donde aportan lógica de aplicaci�
 no pretende ser una implementación estricta de Clean Architecture.
 
 - **UI:** pantallas Compose, estados y eventos de ViewModels. Credential Manager
-  obtiene el token de Google en presentación. Los ViewModels dependen de casos
-  de uso y contratos del dominio.
-- **Domain:** modelos, contratos en `domain/repository`, casos de uso y reglas de
-  validación. No importa Android, Firebase, DataStore ni clases de data.
-- **Data:** implementaciones de los contratos, fuentes Firebase y mapper de
-  Firestore. DataStore conserva la preferencia de sesión.
+  obtiene el token de Google en presentación. Los ViewModels usan repositorios
+  directamente para operaciones simples y casos de uso cuando hay validación u
+  orquestación de varias operaciones.
+- **Domain:** modelos, contratos en `domain/repository`, reglas de negocio y casos
+  de uso con lógica propia. No importa Android, Firebase, DataStore ni clases de
+  data.
+- **Data:** implementaciones de los contratos, fuentes Firebase y mappers. Las
+  observaciones de Firestore se exponen como `Flow` con `callbackFlow`; las lecturas
+  puntuales usan `get().await()`. DataStore conserva la preferencia de sesión.
 - **DI:** Hilt proporciona los SDK y enlaza contratos con implementaciones mediante
   `RepositoryModule` y `@Binds`.
 
 Los contratos son `RecipeRepository`, `AuthRepository`, `UserRepository` y
 `SessionRepository`. Sus implementaciones son `FirebaseRecipeRepository`,
 `FirebaseAuthRepository`, `FirestoreUserRepository` y `DataStoreSessionRepository`.
+
+Se mantienen cuatro casos de uso porque coordinan trabajo o aplican reglas:
+`CreateRecipeUseCase` valida y construye la receta con el usuario actual;
+`GoogleLoginUseCase` crea el perfil si es el primer acceso;
+`RegisterUserUseCase` crea la cuenta y el perfil, y cierra la sesión; y
+`LogoutUseCase` coordina el cierre de sesión y la limpieza de `rememberMe`.
 
 El flujo de autenticación Google es:
 Credential Manager → ID token → ViewModel → caso de uso → AuthRepository →
@@ -72,14 +81,38 @@ se construyen únicamente en data.
 - El registro actualiza el nombre, envía el correo de verificación, crea el perfil
   y cierra la sesión. El primer acceso con Google crea el perfil si no existe.
 - `rememberMe` se guarda en DataStore; Google lo activa al completar el login.
-- Firestore expone recetas mediante Flow; las imágenes se almacenan en Storage.
-- `RecipeValidator` centraliza título, descripción, ingredientes, pasos, duración
-  positiva y dificultad entre 1 y 5. El formulario convierte la duración textual
-  y conserva sus mensajes de validación.
+- Firestore observa recetas mediante `callbackFlow`; las consultas puntuales usan
+  `get().await()`. Las imágenes se almacenan en Firebase Storage.
 - Al crear y editar se recortan espacios exteriores y se descartan ingredientes
   y pasos vacíos, conservando el orden.
 - La cámara utiliza una aplicación externa y FileProvider; uCrop realiza el
   recorte. Se conservan ese flujo y sus permisos.
+
+## Formulario y validación de recetas
+
+`RecipeFormStateHolder` mantiene el estado del formulario utilizado por ambos
+ViewModels. Un solo `RecipeFormContent` presenta el formulario, mientras
+`CreateRecipeViewModel` y `EditRecipeViewModel` mantienen separadas las operaciones
+de creación y edición.
+Sus routes conectan el estado y los eventos con la UI.
+
+`RecipeFormValidator` valida entradas de presentación como la duración vacía o no
+numérica y delega las reglas de receta a `RecipeValidator`. El dominio devuelve
+`RecipeValidationError` y `RecipeValidationException`, sin textos localizados. La
+UI traduce los errores tipados a recursos de `strings.xml`.
+
+Al crear, el ViewModel valida, sube una imagen local si se seleccionó y llama a
+`CreateRecipeUseCase`, que obtiene la identidad del autor, normaliza la receta y
+la persiste. Si falla la persistencia posterior a una subida, intenta limpiar la
+imagen huérfana sin reemplazar el error original. Al editar, el ViewModel carga
+la receta puntualmente, permite conservar, reemplazar o quitar la imagen y
+actualiza la receta existente.
+
+Los errores de login se clasifican con `AuthError` y `AuthException`. Las pantallas
+de login y registro emiten errores de UI tipados que la presentación resuelve a
+recursos, sin mostrar mensajes crudos de Firebase.
+Los estados se exponen con `StateFlow` y Compose los observa con
+`collectAsStateWithLifecycle`.
 
 Estos cambios no requieren migraciones, nuevas colecciones ni cambios del esquema
 Firebase. Las recetas ya guardadas no se reescriben automáticamente.
@@ -113,15 +146,19 @@ estructura.
 
 ```bash
 ./gradlew testDebugUnitTest
-./gradlew lint
+./gradlew lintDebug
 ./gradlew assembleDebug
 ```
 
-Los tests unitarios cubren el formulario, la validación y normalización al crear
-recetas, la identidad del autor, los errores de persistencia, los eventos y estados
-del login, las escrituras de preferencias, los intentos simultáneos y las emisiones
-del listado. Incluyen casos de cancelación. Usan repositorios fake y
-`kotlinx-coroutines-test`, sin Firebase real ni red.
+Los tests unitarios cubren validación y estado del formulario, los ViewModels de
+creación y edición, autenticación, mapeo de errores, persistencia, cancelación y
+emisiones del listado. Usan repositorios fake y `kotlinx-coroutines-test`, sin
+Firebase real ni red.
+
+GitHub Actions ejecuta esos tres comandos al abrir o actualizar una pull request
+y al hacer push a `master`. El repositorio debe tener configurado el secreto de
+Actions `GOOGLE_SERVICES_JSON_BASE64`, con el `google-services.json` codificado
+en Base64. El workflow no despliega la aplicación ni las reglas de Firebase.
 
 La prueba manual de autenticación, verificación de email, cámara, galería y recorte
 requiere un dispositivo o emulador y la configuración Firebase propia.
